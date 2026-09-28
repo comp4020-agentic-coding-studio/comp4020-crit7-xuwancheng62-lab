@@ -1,0 +1,99 @@
+---
+// Quiet line-art for the sand heading band. Decorative only: hidden from
+// assistive tech, drawn in the palette's neutrals with a little gold, and
+// faded out towards the heading text (see .head-decor in styles.css).
+//
+//   arcs      concentric arcs, like a campus seen from above
+//   grid      a fine survey grid with contour lines
+//   pages     stacked documents with ruled lines
+//   network   course nodes joined like a prerequisite map
+interface Props {
+  variant: "arcs" | "grid" | "pages" | "network";
+}
+const { variant } = Astro.props;
+
+const W = 600;
+const H = 300;
+
+const arcRadii = Array.from({ length: 10 }, (_, i) => 70 + i * 38);
+
+const gridX = Array.from({ length: Math.floor(W / 30) + 1 }, (_, i) => i * 30);
+const gridY = Array.from({ length: Math.floor(H / 30) + 1 }, (_, i) => i * 30);
+const contours = [0, 1, 2, 3, 4].map((i) => {
+  const y = 60 + i * 42;
+  const a = 26 - i * 3;
+  return `M 120 ${y} C 240 ${y - a}, 300 ${y + a * 1.6}, 420 ${y} S 560 ${y - a}, 620 ${y + a / 2}`;
+});
+
+const sheets = [
+  { x: 330, y: 70, r: -8 },
+  { x: 380, y: 50, r: 4 },
+  { x: 440, y: 80, r: 12 },
+];
+
+const nodes: [number, number][] = [
+  [250, 210], [330, 120], [360, 240], [420, 60], [450, 170], [520, 110], [540, 240], [590, 40], [600, 180],
+];
+const edges: [number, number][] = [
+  [0, 1], [0, 2], [1, 3], [1, 4], [2, 4], [3, 5], [4, 5], [4, 6], [5, 7], [5, 8], [6, 8],
+];
+const goldNodes = new Set([1, 5]);
+---
+
+<svg
+  class:list={["head-decor", `head-decor-${variant}`]}
+  viewBox={`0 0 ${W} ${H}`}
+  preserveAspectRatio="xMaxYMid slice"
+  aria-hidden="true"
+  focusable="false"
+>
+  {
+    variant === "arcs" && (
+      <g fill="none">
+        {arcRadii.map((r, i) => (
+          <circle class={i === 4 ? "d-gold" : "d-line"} cx={W + 20} cy={H + 40} r={r} />
+        ))}
+        <circle class="d-gold d-thin" cx={W + 20} cy={H + 40} r={arcRadii[7] + 14} stroke-dasharray="2 7" />
+      </g>
+    )
+  }
+  {
+    variant === "grid" && (
+      <g fill="none">
+        {gridX.map((x) => <line class="d-faint" x1={x} y1="0" x2={x} y2={H} />)}
+        {gridY.map((y) => <line class="d-faint" x1="0" y1={y} x2={W} y2={y} />)}
+        {contours.map((d, i) => <path class={i === 2 ? "d-gold" : "d-line"} d={d} />)}
+        <g class="d-gold">
+          <path d="M 474 138 h 12 M 480 132 v 12" />
+          <circle cx="480" cy="138" r="9" />
+        </g>
+      </g>
+    )
+  }
+  {
+    variant === "pages" && (
+      <g fill="none">
+        {sheets.map((s, i) => (
+          <g transform={`rotate(${s.r} ${s.x + 70} ${s.y + 95})`}>
+            <rect class:list={["d-sheet", i === sheets.length - 1 ? "d-gold" : "d-line"]} x={s.x} y={s.y} width="140" height="190" rx="3" />
+            {[0, 1, 2, 3, 4, 5, 6].map((l) => (
+              <line class="d-line" x1={s.x + 18} y1={s.y + 36 + l * 20} x2={s.x + (l === 6 ? 80 : 122)} y2={s.y + 36 + l * 20} />
+            ))}
+          </g>
+        ))}
+      </g>
+    )
+  }
+  {
+    variant === "network" && (
+      <g>
+        {edges.map(([a, b]) => (
+          <line class="d-line" x1={nodes[a][0]} y1={nodes[a][1]} x2={nodes[b][0]} y2={nodes[b][1]} />
+        ))}
+        {nodes.map(([x, y], i) => (
+          <circle class={goldNodes.has(i) ? "d-node-gold" : "d-node"} cx={x} cy={y} r={goldNodes.has(i) ? 7 : 5} />
+        ))}
+      </g>
+    )
+  }
+</svg>

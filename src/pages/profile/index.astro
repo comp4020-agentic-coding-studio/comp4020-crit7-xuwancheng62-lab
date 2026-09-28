@@ -1,7 +1,9 @@
 ---
 import SessionEnrolments from "../../components/SessionEnrolments.astro";
+import HeadDecor from "../../components/HeadDecor.astro";
 import Base from "../../layouts/Base.astro";
 import { enrolmentHistory, statusOf } from "../../lib/db";
+import { totalUnits } from "../../lib/format";
 import { findProgram } from "../../lib/programs";
 
 const student = Astro.locals.student!;
@@ -10,12 +12,33 @@ const history = enrolmentHistory(student.id).map((entry) => ({ ...entry, status:
 const current = history.filter((h) => h.status !== "Past");
 const previous = history.filter((h) => h.status === "Past").reverse();
 const saved = Astro.url.searchParams.has("saved");
+const enrolledNow = current.reduce((n, h) => n + h.courses.length, 0);
+const unitsOnRecord = history.reduce((n, h) => n + totalUnits(h.courses), 0);
 ---
 
 <Base title="Profile">
   <header class="page-head">
+    <HeadDecor variant="pages" />
     <p class="eyebrow">Student profile</p>
     <h1>{student.id}</h1>
+    <p class="lede">
+      {student.career} student in the {program.name}. This ID is the only thing you'll ever need to type here: no
+      passwords, and definitely no Class Numbers.
+    </p>
+    <dl class="stats">
+      <div>
+        <dt>Enrolled now</dt>
+        <dd>{enrolledNow} <small>{enrolledNow === 1 ? "course" : "courses"}</small></dd>
+      </div>
+      <div>
+        <dt>Units on record</dt>
+        <dd>{unitsOnRecord} <small>units</small></dd>
+      </div>
+      <div>
+        <dt>Sessions</dt>
+        <dd>{history.length} <small>on record</small></dd>
+      </div>
+    </dl>
   </header>
 
   {

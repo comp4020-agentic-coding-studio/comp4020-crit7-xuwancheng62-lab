@@ -1,5 +1,6 @@
 ---
 import Crumbs from "../../../components/Crumbs.astro";
+import HeadDecor from "../../../components/HeadDecor.astro";
 import Base from "../../../layouts/Base.astro";
 import { getSession, listEnrolments, MAX_COURSES_PER_SESSION, searchSubjects } from "../../../lib/db";
 
@@ -17,6 +18,7 @@ const atLimit = listEnrolments(session.code, student.id).length >= MAX_COURSES_P
   <Crumbs items={[{ label: "Enrolment", href: "/" }, { label: session.name, href: `${base}/` }, { label: "Search" }]} />
 
   <header class="page-head">
+    <HeadDecor variant="grid" />
     <p class="eyebrow">{session.name}</p>
     <h1>Find a course</h1>
     <p class="lede">Search by name, code or topic. We'll show the version of each course that fits your program.</p>

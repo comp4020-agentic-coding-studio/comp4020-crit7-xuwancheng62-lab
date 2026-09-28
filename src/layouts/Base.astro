@@ -31,33 +31,17 @@ const section = path.startsWith("/readme")
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
-      <div class="wrap site-header-main">
-        <a class="wordmark" href="/">
-          <span class="wordmark-name">ANU Student Services</span>
-          <span class="wordmark-tag">Prototype</span>
-        </a>
-        <nav class="site-nav" aria-label="Site">
-          <ul>
-            <li><a href="/" aria-current={section === "enrolment" ? "page" : undefined}>Enrolment</a></li>
-            {studentId && <li><a href="/courses/" aria-current={section === "courses" ? "page" : undefined}>Courses</a></li>}
-            {studentId && <li><a href="/profile/" aria-current={section === "profile" ? "page" : undefined}>Profile</a></li>}
-            <li><a href="/readme/" aria-current={section === "about" ? "page" : undefined}>About</a></li>
-          </ul>
-        </nav>
-      </div>
-      <div class="identity-bar">
-        <div class="wrap identity-inner">
+      <div class="utility-bar">
+        <div class="wrap utility-inner">
           {
             studentId ? (
               <>
-                <div class="identity">
-                  <p class="identity-text">
-                    <span class="identity-label">Student ID</span>
-                    <strong class="identity-id">{studentId}</strong>
-                    {program && <span class="identity-program">{program.name}</span>}
-                  </p>
+                <p class="identity-text">
+                  <span class="identity-label">Student ID</span>
+                  <strong class="identity-id">{studentId}</strong>
+                  {program && <span class="identity-program">{program.name}</span>}
                   {student && <span class="career-pill">{student.career}</span>}
-                </div>
+                </p>
                 <form method="post" action="/api/session">
                   <input type="hidden" name="action" value="sign-out" />
                   <button class="identity-switch">Sign out</button>
@@ -70,6 +54,22 @@ const section = path.startsWith("/readme")
             )
           }
         </div>
+      </div>
+      <div class="wrap masthead">
+        <a class="brand" href="/">
+          <img class="brand-logo" src="/anu-logo.svg" alt="The Australian National University" width="170" height="60" />
+        </a>
+        <a class="site-title" href="/">
+          Student Services <span class="site-tag">Prototype</span>
+        </a>
+        <nav class="site-nav" aria-label="Site">
+          <ul>
+            <li><a href="/" aria-current={section === "enrolment" ? "page" : undefined}>Enrolment</a></li>
+            {studentId && <li><a href="/courses/" aria-current={section === "courses" ? "page" : undefined}>Courses</a></li>}
+            {studentId && <li><a href="/profile/" aria-current={section === "profile" ? "page" : undefined}>Profile</a></li>}
+            <li><a href="/readme/" aria-current={section === "about" ? "page" : undefined}>About</a></li>
+          </ul>
+        </nav>
       </div>
     </header>
     <main id="main" class="wrap">

@@ -1,4 +1,5 @@
 ---
+import HeadDecor from "../../components/HeadDecor.astro";
 import Base from "../../layouts/Base.astro";
 import { browseCatalogue, type CatalogueFilters, featuredSession, getSession, listSessions } from "../../lib/db";
 import { findProgram } from "../../lib/programs";
@@ -43,10 +44,11 @@ const detail = (code: string) => `/sessions/${session!.code}/courses/${code}/`;
 
 <Base title={filters.q ? `Courses: ${filters.q}` : "Course catalogue"}>
   <header class="page-head">
+    <HeadDecor variant="network" />
     {session && <p class="eyebrow">{session.name}</p>}
     <h1>Course catalogue</h1>
     <p class="lede">
-      Browse every course offered this session. We start with the courses you can take as a
+      Browse every course offered this session. We start with the courses you can take as a{" "}
       {student.career.toLowerCase()} student, with the ones recommended for the {program.name} first.
     </p>
   </header>

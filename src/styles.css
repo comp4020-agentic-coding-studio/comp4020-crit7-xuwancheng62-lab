@@ -1,6 +1,8 @@
 /* ---------- design tokens ---------- */
 :root {
-  --page: #f7f5f0;
+  --page: #ffffff;
+  --sand: #f5ede1;
+  --sand-line: #e4d6bf;
   --paper: #ffffff;
   --ink: #1a1a1a;
   --muted: #595959;
@@ -39,7 +41,7 @@
   --prose-width: 42rem;
   --gutter: clamp(1rem, 4vw, 2.5rem);
 
-  --radius: 3px;
+  --radius: 2px;
   --rule: 1px solid var(--line);
 }
 
@@ -62,6 +64,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  overflow-x: clip;
 }
 
 a {
@@ -132,119 +135,73 @@ p {
   padding-inline: var(--gutter);
 }
 
-/* ---------- site header ---------- */
+/* ---------- site header ----------
+   Laid out after ANU's web pages: a black utility bar, a white masthead
+   with the university lockup and site title, then a nav row on a gold rule. */
 .site-header {
+  background: var(--paper);
+  color: var(--ink);
+  border-bottom: 3px solid var(--gold);
+}
+.utility-bar {
   background: var(--bar);
   color: var(--bar-ink);
-  border-bottom: 4px solid var(--gold);
 }
-.site-header a {
+.utility-bar a {
   color: var(--bar-ink);
 }
-.site-header :focus-visible {
-  outline-offset: 2px;
-}
-.site-header-main {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3) var(--space-6);
-  padding-top: var(--space-5);
-  padding-bottom: var(--space-4);
-}
-.wordmark {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-  text-decoration: none;
-}
-.wordmark-name {
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-.wordmark-tag {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--gold);
-}
-.site-nav ul {
-  display: flex;
-  gap: var(--space-5);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.site-nav a {
-  display: inline-block;
-  padding: var(--space-1) 0;
-  font-weight: 600;
-  text-decoration: none;
-  border-bottom: 2px solid transparent;
-}
-.site-nav a:hover,
-.site-nav a[aria-current="page"] {
-  color: var(--bar-ink);
-  border-bottom-color: var(--gold);
-}
-.identity-bar {
-  border-top: 1px solid #2c2c2c;
-  background: #1b1b1b;
-}
-.identity-inner {
+.utility-inner {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-2) var(--space-5);
-  padding-top: var(--space-3);
-  padding-bottom: var(--space-3);
-}
-.identity {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
+  padding-top: var(--space-2);
+  padding-bottom: var(--space-2);
 }
 .identity-text {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 var(--space-3);
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--bar-muted);
 }
 .identity-text strong {
   color: var(--bar-ink);
-  font-size: 1rem;
   font-weight: 700;
 }
-.identity-text a {
-  color: var(--bar-ink);
+.identity-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.identity-text strong.identity-id {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
 }
 .career-pill {
   display: inline-block;
-  padding: 0.1rem 0.6rem;
+  padding: 0 0.55rem;
   border: 1px solid var(--gold);
   border-radius: 999px;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 700;
+  line-height: 1.6;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--gold);
 }
 .identity-switch {
-  padding: var(--space-1) var(--space-3);
+  padding: 0.15rem var(--space-3);
   border: 1px solid #555;
   border-radius: var(--radius);
   background: transparent;
   color: var(--bar-ink);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -253,40 +210,105 @@ p {
   color: var(--gold);
 }
 
-.identity-label {
-  font-size: 0.72rem;
+.masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-6);
+  padding-top: var(--space-5);
+  padding-bottom: var(--space-5);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  padding-right: var(--space-6);
+  border-right: 2px solid var(--ink);
+  color: var(--ink);
+  text-decoration: none;
+}
+/* The official ANU logo, from anu.edu.au's own site header. */
+.brand-logo {
+  display: block;
+  width: 170px;
+  height: auto;
+}
+.site-title {
+  display: flex;
+  flex-direction: column;
+  font-size: 1.45rem;
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+}
+.site-tag {
+  margin-top: var(--space-1);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--gold-deep);
+}
+.site-header a:hover {
+  color: var(--ink);
+}
+.site-nav {
+  margin-left: auto;
+}
+.site-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.site-nav a {
+  display: inline-block;
+  padding: var(--space-2) 0;
+  border-bottom: 3px solid transparent;
+  font-size: 0.85rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--bar-muted);
+  text-decoration: none;
 }
-.identity-text strong.identity-id {
-  font-family: var(--font-mono);
-  letter-spacing: 0.02em;
+.site-nav a:hover {
+  border-bottom-color: var(--line-strong);
+}
+.site-nav a[aria-current="page"] {
+  border-bottom-color: var(--ink);
 }
 
 /* ---------- page frame ---------- */
 main {
   flex: 1;
-  padding-top: var(--space-6);
   padding-bottom: var(--space-8);
 }
 
 .site-footer {
-  border-top: var(--rule);
-  color: var(--muted);
+  background: var(--bar);
+  color: var(--bar-muted);
+  border-top: 4px solid var(--gold);
   font-size: 0.875rem;
 }
 .site-footer p {
   margin-block: 0;
-  padding-top: var(--space-5);
-  padding-bottom: var(--space-5);
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-6);
 }
 
-.page-head {
-  padding-bottom: var(--space-6);
+/* Page headings sit on a full-width sand band, as on ANU's pages. The
+   shadow paints the band to the viewport edges from inside any container. */
+.page-head,
+.course-head {
   margin-bottom: var(--space-6);
-  border-bottom: var(--rule);
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-6);
+  background: var(--sand);
+  box-shadow: 0 0 0 100vmax var(--sand);
+  clip-path: inset(0 -100vmax);
 }
 .page-head h1 {
   margin-bottom: var(--space-3);
@@ -297,7 +319,7 @@ main {
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--gold-deep);
+  color: var(--ink);
 }
 .lede {
   max-width: var(--prose-width);
@@ -321,27 +343,32 @@ main {
   margin-bottom: var(--space-4);
 }
 
-/* breadcrumbs */
+/* breadcrumbs: uppercase, slash-separated, current page in gold */
 .crumbs ol {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
-  margin: 0 0 var(--space-5);
-  padding: 0;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  padding: var(--space-4) 0;
   list-style: none;
-  font-size: 0.9rem;
-  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .crumbs li + li::before {
-  content: "›";
-  margin-right: var(--space-2);
-  color: var(--line-strong);
+  content: "/";
+  margin-right: var(--space-3);
 }
 .crumbs a {
-  color: var(--muted);
+  text-decoration: none;
 }
 .crumbs a:hover {
-  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--gold);
+}
+.crumbs [aria-current="page"] {
+  color: var(--gold-deep);
 }
 
 /* ---------- buttons ---------- */
@@ -372,14 +399,14 @@ main {
   color: var(--paper);
 }
 .button.primary {
-  background: var(--gold);
-  border-color: var(--gold);
-  color: var(--ink);
-}
-.button.primary:hover {
   background: var(--ink);
   border-color: var(--ink);
   color: var(--paper);
+}
+.button.primary:hover {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--ink);
 }
 .button.large {
   min-height: 3.25rem;
@@ -772,11 +799,6 @@ main {
 }
 
 /* ---------- course details ---------- */
-.course-head {
-  padding-bottom: var(--space-6);
-  margin-bottom: var(--space-6);
-  border-bottom: var(--rule);
-}
 .course-head .code {
   font-size: 1.1rem;
   margin-bottom: var(--space-2);
@@ -806,22 +828,31 @@ main {
 .course-body p {
   max-width: var(--prose-width);
 }
+/* The enrolment panel follows ANU's course info box: a black-ruled box
+   with a sand title strip and uppercase field labels. */
 .enrol-panel {
   grid-area: panel;
   position: sticky;
   top: var(--space-5);
-  padding: var(--space-5);
+  padding: 0 var(--space-5) var(--space-5);
   background: var(--paper);
-  border: var(--rule);
-  border-top: 6px solid var(--gold);
-  border-radius: var(--radius);
-}
-.enrol-panel.is-ineligible {
-  border-top-color: var(--warn);
+  border: 1px solid var(--ink);
 }
 .enrol-panel h2 {
-  font-size: 1.15rem;
-  margin-bottom: var(--space-3);
+  margin: 0 calc(-1 * var(--space-5)) var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  background: var(--sand);
+  border-bottom: 1px solid var(--ink);
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.enrol-panel.is-ineligible h2 {
+  background: var(--warn-wash);
+  border-bottom-color: var(--warn);
+}
+.enrol-panel.is-ineligible {
+  border-color: var(--warn);
 }
 .enrol-panel p {
   font-size: 0.95rem;
@@ -833,24 +864,22 @@ main {
   width: 100%;
 }
 .key-facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
   margin: 0;
+  padding-top: var(--space-4);
   border-top: var(--rule);
   font-size: 0.95rem;
 }
-.key-facts div {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding: var(--space-2) 0;
-  border-bottom: var(--rule);
-}
 .key-facts dt {
-  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .key-facts dd {
   margin: 0;
-  font-weight: 600;
-  text-align: right;
 }
 
 table {
@@ -1263,11 +1292,42 @@ th.weight {
   .enrol-panel {
     position: static;
   }
+  /* Too narrow for one row: the nav drops below the logo. */
+  .site-nav {
+    flex: 1 1 100%;
+    margin-left: 0;
+    padding-top: var(--space-2);
+    border-top: var(--rule);
+  }
 }
 
 @media (max-width: 40rem) {
-  main {
-    padding-top: var(--space-5);
+  .brand {
+    padding-right: var(--space-4);
+  }
+  .brand-logo {
+    width: 125px;
+  }
+  .site-title {
+    font-size: 1.05rem;
+  }
+  .masthead {
+    gap: var(--space-3) var(--space-4);
+  }
+  .site-nav ul {
+    gap: 0 var(--space-4);
+  }
+  .site-nav a {
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+  }
+  /* On a phone the utility bar keeps to one line: ID, level, Sign out. */
+  .utility-inner {
+    flex-wrap: nowrap;
+  }
+  .identity-label,
+  .identity-program {
+    display: none;
   }
   .featured {
     grid-template-columns: 1fr;
@@ -1372,7 +1432,7 @@ th.weight {
 }
 .filter-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
   gap: var(--space-3) var(--space-4);
   margin-bottom: var(--space-4);
 }
@@ -1408,4 +1468,62 @@ th.weight {
 }
 .catalogue-filters .actions {
   margin: 0;
+}
+
+/* ---------- heading decoration (components/HeadDecor.astro) ----------
+   Sits behind the heading on the right of the sand band and fades out
+   towards the text, so it never competes with it. */
+.page-head:has(.head-decor) {
+  position: relative;
+  isolation: isolate;
+}
+.head-decor {
+  position: absolute;
+  top: 0;
+  /* out to the viewport edge; body clips any overflow */
+  right: calc(50% - 50vw);
+  z-index: -1;
+  width: min(60%, 40rem);
+  height: 100%;
+  pointer-events: none;
+  mask-image: linear-gradient(to left, #000 45%, transparent);
+}
+.head-decor * {
+  vector-effect: non-scaling-stroke;
+}
+.head-decor .d-line {
+  stroke: var(--sand-line);
+  stroke-width: 1.25;
+}
+.head-decor .d-faint {
+  stroke: var(--sand-line);
+  stroke-width: 1;
+  opacity: 0.6;
+}
+.head-decor .d-gold {
+  stroke: var(--gold);
+  stroke-width: 1.25;
+  opacity: 0.45;
+}
+.head-decor .d-thin {
+  stroke-width: 1.5;
+}
+.head-decor .d-sheet {
+  fill: var(--sand);
+}
+.head-decor .d-node {
+  fill: var(--sand);
+  stroke: var(--line-strong);
+  stroke-width: 1.25;
+  opacity: 0.55;
+}
+.head-decor .d-node-gold {
+  fill: var(--gold);
+  opacity: 0.45;
+}
+@media (max-width: 40rem) {
+  .head-decor {
+    width: 85%;
+    opacity: 0.6;
+  }
 }
