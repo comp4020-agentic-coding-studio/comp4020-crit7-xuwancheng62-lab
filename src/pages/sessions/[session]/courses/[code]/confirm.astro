@@ -1,0 +1,66 @@
+---
+import Base from "../../../../../layouts/Base.astro";
+import { getCourseView, getSession, listEnrolments } from "../../../../../lib/db";
+import { scheduleItems, totalUnits } from "../../../../../lib/format";
+import { student } from "../../../../../lib/student";
+
+const session = getSession(Astro.params.session ?? "");
+const view = session && getCourseView(session.code, Astro.params.code ?? "", student.career);
+if (!session || !view || !view.eligible) return new Response("Not available", { status: 404 });
+
+const course = view.offering;
+const base = `/sessions/${session.code}`;
+const current = totalUnits(listEnrolments(session.code));
+---
+
+<Base title={`Confirm ${course.code}`}>
+  <p class="crumbs">
+    <a href="/">Enrolment</a> › <a href={`${base}/`}>{session.name}</a> ›
+    <a href={`${base}/courses/${course.code}/`}>{course.code}</a> › Confirm
+  </p>
+  <h1>Confirm enrolment</h1>
+
+  {
+    course.enrolled ? (
+      <p class="banner" role="status">
+        You're already enrolled in {course.code}. <a href={`${base}/`}>Back to {session.name}</a>
+      </p>
+    ) : (
+      <>
+        <dl class="summary">
+          <dt>Course</dt>
+          <dd>
+            <strong>{course.code}</strong> {course.name}
+          </dd>
+          <dt>Session</dt>
+          <dd>{session.name}</dd>
+          <dt>Units</dt>
+          <dd>{course.units}</dd>
+          <dt>Schedule</dt>
+          <dd>
+            <ul class="plain">
+              {scheduleItems(course.schedule).map((s) => (
+                <li>
+                  {s.kind}: {s.when}
+                  {s.where && `, ${s.where}`}
+                </li>
+              ))}
+            </ul>
+          </dd>
+          <dt>Your load</dt>
+          <dd>
+            {current} → <strong>{current + course.units}</strong> units this session
+          </dd>
+        </dl>
+        <form method="post" action="/api/enrolments" class="actions">
+          <input type="hidden" name="session" value={session.code} />
+          <input type="hidden" name="course" value={course.code} />
+          <button class="button primary">Confirm enrolment</button>
+          <a class="button quiet" href={`${base}/courses/${course.code}/`}>
+            Cancel
+          </a>
+        </form>
+      </>
+    )
+  }
+</Base>

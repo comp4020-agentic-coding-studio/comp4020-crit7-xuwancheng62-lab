@@ -1,0 +1,82 @@
+---
+import Base from "../../../layouts/Base.astro";
+import { getSession, listEnrolments, statusOf } from "../../../lib/db";
+import { scheduleItems, totalUnits } from "../../../lib/format";
+
+const session = getSession(Astro.params.session ?? "");
+if (!session) return new Response("Session not found", { status: 404 });
+
+const enrolled = listEnrolments(session.code);
+const added = Astro.url.searchParams.get("added");
+const addedCourse = enrolled.find((c) => c.code === added);
+---
+
+<Base title={session.name}>
+  <p class="crumbs"><a href="/">Enrolment</a> › {session.name}</p>
+  <h1>{session.name}</h1>
+  <p class="lede">
+    <span class:list={["badge", `badge-${statusOf(session).toLowerCase()}`]}>{statusOf(session)}</span>
+    Your enrolment for this session.
+  </p>
+
+  {
+    addedCourse && (
+      <p class="banner" role="status">
+        You're enrolled in <strong>{addedCourse.code} {addedCourse.name}</strong>.
+      </p>
+    )
+  }
+
+  <form class="search" method="get" action={`/sessions/${session.code}/search/`}>
+    <label for="q">Find a course to add</label>
+    <div class="search-row">
+      <input id="q" name="q" type="search" placeholder="Course name, code or topic, e.g. algorithms" required />
+      <button class="button primary">Search</button>
+    </div>
+  </form>
+
+  <h2>Enrolled courses</h2>
+  {
+    enrolled.length === 0 ? (
+      <p class="empty">You're not enrolled in any courses for this session yet. Search above to add one.</p>
+    ) : (
+      <table class="enrolled">
+        <thead>
+          <tr>
+            <th scope="col">Course</th>
+            <th scope="col">Units</th>
+            <th scope="col">Schedule</th>
+          </tr>
+        </thead>
+        <tbody>
+          {enrolled.map((course) => (
+            <tr>
+              <td>
+                <a href={`/sessions/${session.code}/courses/${course.code}/`}>
+                  <strong>{course.code}</strong> {course.name}
+                </a>
+              </td>
+              <td>{course.units}</td>
+              <td>
+                <ul class="plain">
+                  {scheduleItems(course.schedule).map((s) => (
+                    <li>
+                      {s.kind}: {s.when}
+                    </li>
+                  ))}
+                </ul>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row">Total</th>
+            <td>{totalUnits(enrolled)}</td>
+            <td />
+          </tr>
+        </tfoot>
+      </table>
+    )
+  }
+</Base>

@@ -1,0 +1,91 @@
+---
+import Base from "../../../layouts/Base.astro";
+import { getSession, searchSubjects } from "../../../lib/db";
+import { student } from "../../../lib/student";
+
+const session = getSession(Astro.params.session ?? "");
+if (!session) return new Response("Session not found", { status: 404 });
+
+const q = (Astro.url.searchParams.get("q") ?? "").trim();
+const results = searchSubjects(session.code, q, student.career);
+const base = `/sessions/${session.code}`;
+---
+
+<Base title={q ? `Search: ${q}` : "Course search"}>
+  <p class="crumbs">
+    <a href="/">Enrolment</a> › <a href={`${base}/`}>{session.name}</a> › Search
+  </p>
+  <h1>Find a course</h1>
+  <p class="lede">
+    Courses offered in {session.name}. Search by name, code or topic; we'll show the version for your program.
+  </p>
+
+  <form class="search" method="get" action={`${base}/search/`}>
+    <label for="q">Course name, code or topic</label>
+    <div class="search-row">
+      <input id="q" name="q" type="search" value={q} placeholder="e.g. algorithms" required />
+      <button class="button primary">Search</button>
+    </div>
+  </form>
+
+  {q && <h2>{results.length} {results.length === 1 ? "result" : "results"} for “{q}”</h2>}
+  {
+    q && results.length === 0 && (
+      <p class="empty">
+        No courses in {session.name} match “{q}”. Try a broader word, like “programming” or “data”.
+      </p>
+    )
+  }
+
+  <ul class="results">
+    {
+      results.map(({ groupName, eligible, ineligible }) => (
+        <>
+          {eligible && (
+            <li class="result">
+              <div class="result-head">
+                <h3>
+                  <a href={`${base}/courses/${eligible.code}/`}>{groupName}</a>
+                </h3>
+                <span class="code">{eligible.code}</span>
+              </div>
+              <p class="ok">✓ Available for your program</p>
+              <p class="facts">
+                {eligible.units} units · {session.name} · {eligible.teachingMode}
+              </p>
+              <p>{eligible.summary}</p>
+              <div class="actions">
+                {eligible.enrolled ? (
+                  <span class="enrolled-tag">Enrolled</span>
+                ) : (
+                  <a class="button primary" href={`${base}/courses/${eligible.code}/`}>
+                    Review &amp; Add<span class="visually-hidden"> {eligible.code}</span>
+                  </a>
+                )}
+              </div>
+            </li>
+          )}
+          {ineligible && (
+            <li class="result unavailable">
+              <div class="result-head">
+                <h3>
+                  <a href={`${base}/courses/${ineligible.code}/`}>{groupName}</a>
+                </h3>
+                <span class="code">{ineligible.code}</span>
+              </div>
+              <p class="warn">Not available for your academic career ({ineligible.career.toLowerCase()} offering).</p>
+              {eligible ? (
+                <p>
+                  Your program uses <strong>{eligible.code}</strong>.{" "}
+                  <a href={`${base}/courses/${eligible.code}/`}>View {eligible.code}</a>
+                </p>
+              ) : (
+                <p>There's no {student.career.toLowerCase()} version of this course in {session.name}.</p>
+              )}
+            </li>
+          )}
+        </>
+      ))
+    }
+  </ul>
+</Base>

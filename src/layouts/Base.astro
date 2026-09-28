@@ -1,0 +1,36 @@
+---
+import { student } from "../lib/student";
+import "../styles.css";
+
+interface Props {
+  title: string;
+}
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} · Enrolment (ISIS redesign)</title>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="brand" href="/">Enrolment <span>ISIS redesign prototype</span></a>
+        <nav aria-label="site">
+          <a href="/">Enrolment</a>
+          <a href="/readme/">About</a>
+        </nav>
+      </div>
+      <p class="student">
+        <span class="student-name">{student.name}</span>
+        {student.program} · {student.career}
+      </p>
+    </header>
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>

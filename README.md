@@ -1,18 +1,64 @@
-# Your prototype
+# ISIS enrolment, redesigned
 
-<!-- TEMPLATE: this file is yours, and the deployed app publishes it in full at
-     /readme/ --- a visitor reads it before they touch the app, and so does the
-     marker. Replace everything in it, this comment included. -->
+A full-stack prototype of ANU course enrolment, rebuilt around what a student
+is actually trying to do: find the course they want to study, understand it,
+and enrol. The ISIS version asks for administrative detail up front. It wants
+a numeric Class Number, it makes you know which course code belongs to your
+academic career, and its search results say too little about a course to
+decide from. In this version the student picks the subject and the semester,
+and the system works out the rest.
 
-What this is, in a paragraph: the thing, and what it's for.
+**Design principle: the student chooses what they want to study; the system
+resolves the correct course code, offering and class number from their
+student profile.**
+
+## The flow
+
+Choose semester → search by name, code or topic → course details → Add →
+confirm → enrolled.
+
+- **Sessions in date order.** Every session is listed by its start date with
+  a Past, Current or Upcoming label, and the current (or next) semester is
+  highlighted in place.
+- **Search by what you know.** A search matches course names, codes and
+  descriptions. Results carry units, teaching mode and a summary, so they
+  help you decide.
+- **Details before enrolling.** A search result leads to the course details
+  (description, prerequisites, schedule, assessment) and never straight to
+  enrolment. Having to leave ISIS to understand a course is the round trip
+  this redesign removes.
+- **The right variant, automatically.** Some subjects have separate
+  undergraduate and postgraduate codes (COMP4020 and COMP8020 are one
+  subject, *Agentic Coding Studio*). The demo student is a postgraduate in the
+  Master of Computing, so searching for the subject shows COMP8020. If they
+  type COMP4020, the result explains that it isn't available for their
+  academic career and points to COMP8020. An ineligible course has no Add
+  button, and the server refuses it too.
+- **No Class Number, anywhere.** The class number is the database key for an
+  offering. It is resolved on the server when you confirm and never shown or
+  asked for.
 
 ## What good looks like here
 
-Say what good means for this app: what you decided, what you read or looked at
-while deciding, and what you chose not to build. The rules that decision
-produced live in `CLAUDE.md` and the checks that protect it live in `spec/`;
-this is the argument they came from, so say which parts of good are enforced and
-which are judgement calls.
+Good means a student can enrol in the right course without knowing anything
+administrative, and can see why when a course isn't for them.
 
-Images go in `public/` and are linked relatively --- `![alt](public/before.png)`
---- which renders on GitHub and at `/readme/` alike.
+- **Enforced by checks** (`spec/`):
+  - an enrolment persists across a reload
+  - the server refuses the ineligible variant and saves nothing
+  - every page meets the structural and accessibility floor
+- **Judgement calls, left to the crit:** whether the flow is clearer than
+  ISIS, and whether the eligibility messages are the ones a confused student
+  needs.
+
+## What this prototype doesn't do
+
+- no sign-in: one fixed demo student stands in for "the system knows who you
+  are"
+- eligibility is one simple rule (course career = student career), not ANU's
+  degree rules
+- no dropping or swapping courses, class-time choices, timetable-clash
+  checks or enrolment caps
+
+The course catalogue (sessions, descriptions, prerequisites, schedules,
+assessment) is **illustrative prototype data, not authoritative ANU data**.
