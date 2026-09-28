@@ -1,54 +1,47 @@
 # Process overview
 
-<!-- TEMPLATE: this file is a shape to fill in, not a form. Replace everything
-     in it with your own overview, and delete this comment — `pnpm
-     check:evidence` will remind you if it's still here. -->
-
-Written by you, for a reader: how you got from the brief to the harness and
-agentic workflow behind this submission. Markers read this file and follow its
-citations; they don't trawl the repo for evidence you didn't point at.
-
-This file is the shape; the course site's
-[assessment page](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/topics/assessment/#what-you-submit)
-is the requirement, and its
-[word counts](https://comp.anu.edu.au/courses/comp4020-agentic-coding-studio/topics/assessment/#word-counts)
-cover every deliverable.
-
 ## What I built
 
-A sentence or two. `README.md` is where the account of what the app is and what
-good means here lives; this file is how you got there.
+A redesign of ANU's ISIS enrolment flow as a full-stack app: a student picks a
+semester, finds a course by name, code or topic (or browses the catalogue),
+reads its details and enrols, without ever seeing a Class Number.
 
 ## How I got here
 
-The account of the process: how the work actually went, and how you knew the
-result was right. Tell it in whatever order makes it clear. A weekly prototype
-needs a paragraph or two; an assignment needs more.
+I started from the real ISIS flow, not the agent. Sessions weren't in date
+order, and "Add Class" asks for a numeric Class Number that students don't
+know, so they leave ISIS for Programs & Courses and come back. I reframed the
+brief from "improve the interface" to "enrol around what the student already
+knows": choose semester → search or browse → understand the course → add →
+confirm.
 
-Cite the record as you go, as links whose text is the commit hash or range and
-whose target is this repo's commit or compare URL, so a reader clicks straight
-to the evidence:
+I had the spec tests written first, persistence across a reload and eligibility
+([`a8e49ea`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-xuwancheng62-lab/commit/a8e49ea)),
+then Claude Code modelled subjects, per-career variants and offerings, keeping
+the Class Number server-side
+([`d7f6a2c`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-xuwancheng62-lab/commit/d7f6a2c)).
+When the plan let students add straight from search results, I pushed back:
+understanding the course is the point, so every result goes through details
+first ([`2c411eb`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-xuwancheng62-lab/commit/2c411eb)).
 
-- one commit: [`a1b2c3d`](https://github.com/YOUR-ORG/YOUR-REPO/commit/a1b2c3d)
-- a range:
-  [`a1b2c3d...e4f5a6b`](https://github.com/YOUR-ORG/YOUR-REPO/compare/a1b2c3d...e4f5a6b)
+Rather than list COMP4020 and COMP8020 and make students choose, a profile
+(study level and program) resolves the right variant and drives
+recommendations: first two demo profiles
+([`8f67108`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-xuwancheng62-lab/commit/8f67108)),
+then Student ID sign-in with a four-course limit, history, Drop and Switch
+([`808bf39`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-xuwancheng62-lab/commit/808bf39)).
+I imported the 2026 COMP courses from Programs & Courses
+([`abf098c`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-xuwancheng62-lab/commit/abf098c))
+and, because search assumes you know what you want, added a browsable catalogue
+that shares one query with search
+([`9ff4964`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-xuwancheng62-lab/commit/9ff4964)).
+Last, I reworked the layout after anu.edu.au itself, with the ANU logo, so it
+reads as part of ANU's web
+([`e210be9`](https://github.com/comp4020-agentic-coding-studio/comp4020-crit7-xuwancheng62-lab/commit/e210be9)).
 
-To pair a prompt with the commit it produced, quote the prompt (curated, not a
-full transcript) next to the citation:
+## How I knew it was right
 
-> the prompt, verbatim
-
-Screenshots are welcome where one carries the point better than a sentence does.
-Commit the file to this repo and link it with a **relative** path, which is what
-makes it render on GitHub: `![alt text](docs/before.png)`. Images don't count
-towards the word count and don't replace the citation.
-
-## Before you ship
-
-`pnpm check:evidence` verifies that this comment is gone, that your citations
-resolve to real commits, that a crit week's reflection entry is in
-`reflections/`, and that your `CLAUDE.md` is there. It checks that your account
-is traceable, not that it is good: that is the marker's call.
-
-Images aren't checked: unlike a citation whose SHA doesn't resolve, a broken
-image is visible the moment this file is rendered on GitHub.
+The spec suite drives the built server: persistence, per-student variants, the
+four-course limit, Switch rolling back when the add fails, catalogue filters,
+no Class Number in any page, and an accessibility floor. Whether the flow beats
+ISIS is for the crit to judge.
