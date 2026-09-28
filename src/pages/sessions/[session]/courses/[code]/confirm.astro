@@ -1,66 +1,81 @@
 ---
+import Crumbs from "../../../../../components/Crumbs.astro";
 import Base from "../../../../../layouts/Base.astro";
 import { getCourseView, getSession, listEnrolments } from "../../../../../lib/db";
-import { scheduleItems, totalUnits } from "../../../../../lib/format";
-import { student } from "../../../../../lib/student";
+import { formatDate, scheduleItems, totalUnits } from "../../../../../lib/format";
 
+const student = Astro.locals.student!;
 const session = getSession(Astro.params.session ?? "");
-const view = session && getCourseView(session.code, Astro.params.code ?? "", student.career);
+const view = session && getCourseView(session.code, Astro.params.code ?? "", student);
 if (!session || !view || !view.eligible) return new Response("Not available", { status: 404 });
 
 const course = view.offering;
 const base = `/sessions/${session.code}`;
-const current = totalUnits(listEnrolments(session.code));
+const current = totalUnits(listEnrolments(session.code, student.id));
 ---
 
 <Base title={`Confirm ${course.code}`}>
-  <p class="crumbs">
-    <a href="/">Enrolment</a> › <a href={`${base}/`}>{session.name}</a> ›
-    <a href={`${base}/courses/${course.code}/`}>{course.code}</a> › Confirm
-  </p>
-  <h1>Confirm enrolment</h1>
+  <Crumbs
+    items={[
+      { label: "Enrolment", href: "/" },
+      { label: session.name, href: `${base}/` },
+      { label: course.code, href: `${base}/courses/${course.code}/` },
+      { label: "Confirm" },
+    ]}
+  />
 
-  {
-    course.enrolled ? (
-      <p class="banner" role="status">
-        You're already enrolled in {course.code}. <a href={`${base}/`}>Back to {session.name}</a>
-      </p>
-    ) : (
-      <>
-        <dl class="summary">
-          <dt>Course</dt>
-          <dd>
-            <strong>{course.code}</strong> {course.name}
-          </dd>
-          <dt>Session</dt>
-          <dd>{session.name}</dd>
-          <dt>Units</dt>
-          <dd>{course.units}</dd>
-          <dt>Schedule</dt>
-          <dd>
-            <ul class="plain">
-              {scheduleItems(course.schedule).map((s) => (
-                <li>
-                  {s.kind}: {s.when}
-                  {s.where && `, ${s.where}`}
-                </li>
-              ))}
-            </ul>
-          </dd>
-          <dt>Your load</dt>
-          <dd>
-            {current} → <strong>{current + course.units}</strong> units this session
-          </dd>
-        </dl>
-        <form method="post" action="/api/enrolments" class="actions">
-          <input type="hidden" name="session" value={session.code} />
-          <input type="hidden" name="course" value={course.code} />
-          <button class="button primary">Confirm enrolment</button>
-          <a class="button quiet" href={`${base}/courses/${course.code}/`}>
-            Cancel
-          </a>
-        </form>
-      </>
-    )
-  }
+  <div class="narrow">
+    <h1>Confirm enrolment</h1>
+
+    {
+      course.enrolled ? (
+        <p class="banner" role="status">
+          You're already enrolled in {course.code}. <a href={`${base}/`}>Back to {session.name}</a>
+        </p>
+      ) : (
+        <>
+          <p class="lede">Check the details below, then confirm to add this course to your enrolment.</p>
+          <section class="confirm-card" aria-labelledby="confirm-course">
+            <p class="code">{course.code}</p>
+            <h2 id="confirm-course">{course.name}</h2>
+            <dl class="summary">
+              <dt>Session</dt>
+              <dd>
+                {session.name}
+                <br />
+                <span class="meta">
+                  {formatDate(session.startDate)} – {formatDate(session.endDate)}
+                </span>
+              </dd>
+              <dt>Units</dt>
+              <dd>{course.units}</dd>
+              <dt>Schedule</dt>
+              <dd>
+                <ul class="schedule-list">
+                  {scheduleItems(course.schedule).map((s) => (
+                    <li>
+                      <strong>{s.kind}</strong> · {s.when}
+                      {s.where && <span> · {s.where}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </dd>
+              <dt>Your load</dt>
+              <dd class="load">
+                {current} → <strong>{current + course.units}</strong> units this session
+              </dd>
+            </dl>
+          </section>
+          <form method="post" action="/api/enrolments" class="actions">
+            <input type="hidden" name="session" value={session.code} />
+            <input type="hidden" name="course" value={course.code} />
+            <button class="button primary large">Confirm enrolment</button>
+            <a class="button quiet large" href={`${base}/courses/${course.code}/`}>
+              Cancel
+            </a>
+          </form>
+        </>
+      )
+    }
+  </div>
 </Base>

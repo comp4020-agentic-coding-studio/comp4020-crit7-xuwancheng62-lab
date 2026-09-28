@@ -1,0 +1,51 @@
+---
+import Base from "../layouts/Base.astro";
+import { initials, STUDENTS } from "../lib/student";
+
+const next = Astro.url.searchParams.get("next") ?? "/";
+const current = Astro.locals.student;
+---
+
+<Base title="Sign in">
+  <div class="narrow">
+    <header class="page-head">
+      <h1>Sign in</h1>
+      <p class="lede">
+        Choose a demo student. Your academic profile decides which version of a course you see, for example COMP4020
+        for undergraduates and COMP8020 for postgraduates.
+      </p>
+    </header>
+
+    {
+      current && (
+        <p class="banner" role="status">
+          You're signed in as <strong>{current.name}</strong>. Choose a profile below to switch.
+        </p>
+      )
+    }
+
+    <ul class="profile-list">
+      {
+        STUDENTS.map((s) => (
+          <li class="profile-card">
+            <span class="avatar avatar-large" aria-hidden="true">{initials(s.name)}</span>
+            <div class="profile-body">
+              <h2>{s.name}</h2>
+              <p class="meta">{s.program}</p>
+              <span class="career-pill">{s.career}</span>
+            </div>
+            <form method="post" action="/api/session">
+              <input type="hidden" name="student" value={s.id} />
+              <input type="hidden" name="next" value={next} />
+              <button class="button primary">
+                Continue<span class="visually-hidden"> as {s.name}</span>
+              </button>
+            </form>
+          </li>
+        ))
+      }
+    </ul>
+
+    <p class="hint">This is a simulated sign-in for the prototype. There's no password and no ANU account involved.</p>
+  </div>
+</Base>

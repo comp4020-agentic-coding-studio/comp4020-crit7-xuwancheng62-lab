@@ -1,23 +1,40 @@
 ---
+import Crumbs from "../../../components/Crumbs.astro";
 import Base from "../../../layouts/Base.astro";
 import { getSession, listEnrolments, statusOf } from "../../../lib/db";
-import { scheduleItems, totalUnits } from "../../../lib/format";
+import { formatDate, scheduleItems, totalUnits } from "../../../lib/format";
 
 const session = getSession(Astro.params.session ?? "");
 if (!session) return new Response("Session not found", { status: 404 });
 
-const enrolled = listEnrolments(session.code);
+const student = Astro.locals.student!;
+const status = statusOf(session);
+const enrolled = listEnrolments(session.code, student.id);
+const units = totalUnits(enrolled);
 const added = Astro.url.searchParams.get("added");
 const addedCourse = enrolled.find((c) => c.code === added);
 ---
 
 <Base title={session.name}>
-  <p class="crumbs"><a href="/">Enrolment</a> › {session.name}</p>
-  <h1>{session.name}</h1>
-  <p class="lede">
-    <span class:list={["badge", `badge-${statusOf(session).toLowerCase()}`]}>{statusOf(session)}</span>
-    Your enrolment for this session.
-  </p>
+  <Crumbs items={[{ label: "Enrolment", href: "/" }, { label: session.name }]} />
+
+  <header class="page-head">
+    <span class:list={["badge", `badge-${status.toLowerCase()}`]}>{status}</span>
+    <h1>{session.name}</h1>
+    <p class="meta">
+      {formatDate(session.startDate)} – {formatDate(session.endDate)}
+    </p>
+    <dl class="stats">
+      <div>
+        <dt>Enrolled</dt>
+        <dd>{units} <small>units</small></dd>
+      </div>
+      <div>
+        <dt>Courses</dt>
+        <dd>{enrolled.length}</dd>
+      </div>
+    </dl>
+  </header>
 
   {
     addedCourse && (
@@ -27,56 +44,55 @@ const addedCourse = enrolled.find((c) => c.code === added);
     )
   }
 
-  <form class="search" method="get" action={`/sessions/${session.code}/search/`}>
-    <label for="q">Find a course to add</label>
-    <div class="search-row">
-      <input id="q" name="q" type="search" placeholder="Course name, code or topic, e.g. algorithms" required />
-      <button class="button primary">Search</button>
-    </div>
-  </form>
+  <section class="cta-panel" aria-labelledby="add-title">
+    <h2 id="add-title">Add a course</h2>
+    <p>Search by the course name, code or a topic you're interested in.</p>
+    <form class="search" method="get" action={`/sessions/${session.code}/search/`}>
+      <label for="q">Course name, code or topic</label>
+      <div class="search-row">
+        <input id="q" name="q" type="search" placeholder="e.g. algorithms" required />
+        <button class="button primary">Search courses</button>
+      </div>
+    </form>
+  </section>
 
-  <h2>Enrolled courses</h2>
-  {
-    enrolled.length === 0 ? (
-      <p class="empty">You're not enrolled in any courses for this session yet. Search above to add one.</p>
-    ) : (
-      <table class="enrolled">
-        <thead>
-          <tr>
-            <th scope="col">Course</th>
-            <th scope="col">Units</th>
-            <th scope="col">Schedule</th>
-          </tr>
-        </thead>
-        <tbody>
-          {enrolled.map((course) => (
-            <tr>
-              <td>
-                <a href={`/sessions/${session.code}/courses/${course.code}/`}>
-                  <strong>{course.code}</strong> {course.name}
-                </a>
-              </td>
-              <td>{course.units}</td>
-              <td>
-                <ul class="plain">
+  <section class="section" aria-labelledby="enrolled-title">
+    <h2 id="enrolled-title">Enrolled courses</h2>
+    {
+      enrolled.length === 0 ? (
+        <p class="empty">You're not enrolled in any courses for this session yet. Use “Add a course” above to find one.</p>
+      ) : (
+        <>
+          <ul class="course-rows">
+            {enrolled.map((course) => (
+              <li class="course-row">
+                <div>
+                  <p class="code">{course.code}</p>
+                  <h3>
+                    <a href={`/sessions/${session.code}/courses/${course.code}/`}>{course.name}</a>
+                  </h3>
+                </div>
+                <p class="course-row-units">
+                  <span>Units</span>
+                  {course.units}
+                </p>
+                <ul class="schedule-list" aria-label={`${course.code} schedule`}>
                   {scheduleItems(course.schedule).map((s) => (
                     <li>
-                      {s.kind}: {s.when}
+                      <strong>{s.kind}</strong> · {s.when}
+                      {s.where && <span> · {s.where}</span>}
                     </li>
                   ))}
                 </ul>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-        <tfoot>
-          <tr>
-            <th scope="row">Total</th>
-            <td>{totalUnits(enrolled)}</td>
-            <td />
-          </tr>
-        </tfoot>
-      </table>
-    )
-  }
+              </li>
+            ))}
+          </ul>
+          <p class="total-row">
+            <span>Total enrolled</span>
+            <strong>{units} units</strong>
+          </p>
+        </>
+      )
+    }
+  </section>
 </Base>

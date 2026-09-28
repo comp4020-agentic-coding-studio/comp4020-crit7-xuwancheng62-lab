@@ -4,8 +4,9 @@ import Database from "better-sqlite3";
 import { and, asc, eq, getTableColumns } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
-import { type Career, type Course, classes, courseGroups, courses, enrolments, type Session, sessions } from "./schema";
+import { type Course, classes, courseGroups, courses, enrolments, type Session, sessions } from "./schema";
 import { seedCatalogue } from "./seed";
+import type { Student } from "./student";
 
 // One SQLite file is the app's whole persistent state. In production
 // fly.toml points DATABASE_PATH at the machine's volume (/data), which is
@@ -57,7 +58,7 @@ export function getSession(code: string): Session | undefined {
   return db.select().from(sessions).where(eq(sessions.code, code)).get();
 }
 
-function offerings(sessionCode: string): Offering[] {
+function offerings(sessionCode: string, studentId: string): Offering[] {
   return db
     .select({
       ...getTableColumns(courses),
@@ -68,7 +69,10 @@ function offerings(sessionCode: string): Offering[] {
     .from(classes)
     .innerJoin(courses, eq(classes.courseCode, courses.code))
     .innerJoin(courseGroups, eq(courses.groupId, courseGroups.id))
-    .leftJoin(enrolments, eq(enrolments.classNumber, classes.classNumber))
+    .leftJoin(
+      enrolments,
+      and(eq(enrolments.classNumber, classes.classNumber), eq(enrolments.studentId, studentId)),
+    )
     .where(eq(classes.sessionCode, sessionCode))
     .orderBy(asc(courses.code))
     .all()
@@ -85,10 +89,11 @@ export type SubjectResult = {
 // The student searches for a subject; the system picks the variant their
 // career can take. An ineligible variant is only surfaced when the student
 // named its code, or when there's no eligible variant at all.
-export function searchSubjects(sessionCode: string, query: string, career: Career): SubjectResult[] {
+export function searchSubjects(sessionCode: string, query: string, student: Student): SubjectResult[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  const all = offerings(sessionCode);
+  const { career } = student;
+  const all = offerings(sessionCode, student.id);
   const compact = q.replace(/\s+/g, "");
   const matches = all.filter((o) =>
     [o.code, o.name, o.description, o.groupName].some((field) => field.toLowerCase().includes(q)) ||
@@ -120,8 +125,9 @@ export type CourseView = {
   equivalents: Pick<Course, "code" | "career">[];
 };
 
-export function getCourseView(sessionCode: string, courseCode: string, career: Career): CourseView | undefined {
-  const all = offerings(sessionCode);
+export function getCourseView(sessionCode: string, courseCode: string, student: Student): CourseView | undefined {
+  const { career } = student;
+  const all = offerings(sessionCode, student.id);
   const offering = all.find((o) => o.code === courseCode);
   if (!offering) return undefined;
   const equivalents = db
@@ -138,14 +144,14 @@ export function getCourseView(sessionCode: string, courseCode: string, career: C
   return { offering, eligible, alternative, equivalents };
 }
 
-export function listEnrolments(sessionCode: string): Offering[] {
-  return offerings(sessionCode).filter((o) => o.enrolled);
+export function listEnrolments(sessionCode: string, studentId: string): Offering[] {
+  return offerings(sessionCode, studentId).filter((o) => o.enrolled);
 }
 
 export function enrol(
   sessionCode: string,
   courseCode: string,
-  career: Career,
+  student: Student,
 ): "ok" | "not-offered" | "ineligible" {
   const found = db
     .select({ classNumber: classes.classNumber, career: courses.career })
@@ -154,7 +160,7 @@ export function enrol(
     .where(and(eq(classes.sessionCode, sessionCode), eq(classes.courseCode, courseCode)))
     .get();
   if (!found) return "not-offered";
-  if (found.career !== career) return "ineligible";
-  db.insert(enrolments).values({ classNumber: found.classNumber }).onConflictDoNothing().run();
+  if (found.career !== student.career) return "ineligible";
+  db.insert(enrolments).values({ studentId: student.id, classNumber: found.classNumber }).onConflictDoNothing().run();
   return "ok";
 }

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { int, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { int, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 // The schema is the ground truth for the database. To change it: edit here,
 // run `pnpm db:generate` to turn the diff into a migration under drizzle/,
@@ -53,16 +53,21 @@ export const classes = sqliteTable("classes", {
   schedule: text().notNull(),
 });
 
-export const enrolments = sqliteTable("enrolments", {
-  id: int().primaryKey({ autoIncrement: true }),
-  classNumber: int("class_number")
-    .notNull()
-    .unique()
-    .references(() => classes.classNumber),
-  createdAt: text("created_at")
-    .notNull()
-    .default(sql`(datetime('now'))`),
-});
+// studentId is a demo profile id from src/lib/student.ts, not a table.
+export const enrolments = sqliteTable(
+  "enrolments",
+  {
+    id: int().primaryKey({ autoIncrement: true }),
+    studentId: text("student_id").notNull(),
+    classNumber: int("class_number")
+      .notNull()
+      .references(() => classes.classNumber),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (t) => [uniqueIndex("enrolments_student_class_unique").on(t.studentId, t.classNumber)],
+);
 
 export type Session = typeof sessions.$inferSelect;
 export type CourseGroup = typeof courseGroups.$inferSelect;

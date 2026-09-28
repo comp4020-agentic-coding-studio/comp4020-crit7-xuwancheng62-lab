@@ -3,44 +3,79 @@ import Base from "../layouts/Base.astro";
 import { featuredSession, listEnrolments, listSessions, statusOf } from "../lib/db";
 import { formatDate, totalUnits } from "../lib/format";
 
+const student = Astro.locals.student!;
 const all = listSessions();
 const featured = featuredSession(all);
+const others = all.filter((s) => s.code !== featured?.code);
+const featuredStatus = featured && statusOf(featured);
+const featuredEnrolled = featured ? listEnrolments(featured.code, student.id) : [];
+const firstName = student.name.split(" ")[0];
 ---
 
-<Base title="Enrolment home">
-  <h1>Enrolment</h1>
-  <p class="lede">Choose a session to see your enrolment and add courses. Sessions are listed in date order.</p>
+<Base title="Home">
+  <header class="page-head">
+    <h1>Welcome, {firstName}</h1>
+    <p class="lede">
+      Pick a semester to manage your courses. Search for the subject you want to study; we'll show the version for
+      your program.
+    </p>
+  </header>
 
-  <ol class="sessions">
-    {
-      all.map((session) => {
-        const status = statusOf(session);
-        const isFeatured = session.code === featured?.code;
-        const units = isFeatured ? totalUnits(listEnrolments(session.code)) : 0;
-        return (
-          <li class:list={["session", `status-${status.toLowerCase()}`, { featured: isFeatured }]}>
-            <div class="session-main">
-              <span class:list={["badge", `badge-${status.toLowerCase()}`]}>{status}</span>
-              <h2>{session.name}</h2>
-              <p class="dates">
-                {formatDate(session.startDate)} – {formatDate(session.endDate)}
-              </p>
-              {isFeatured && (
-                <p class="units">
-                  <strong>{units}</strong> units enrolled
-                </p>
-              )}
+  {
+    featured && (
+      <section class="featured" aria-labelledby="featured-title">
+        <div>
+          <span class:list={["badge", `badge-${featuredStatus!.toLowerCase()}`]}>{featuredStatus}</span>
+          <h2 id="featured-title">{featured.name}</h2>
+          <p class="meta">
+            {formatDate(featured.startDate)} – {formatDate(featured.endDate)}
+          </p>
+          <dl class="stats">
+            <div>
+              <dt>Enrolled</dt>
+              <dd>
+                {totalUnits(featuredEnrolled)} <small>units</small>
+              </dd>
             </div>
-            <a
-              class:list={["button", { primary: isFeatured, quiet: !isFeatured }]}
-              href={`/sessions/${session.code}/`}
-            >
-              {isFeatured ? "Go to enrolment" : "View"}
-              <span class="visually-hidden"> for {session.name}</span>
-            </a>
-          </li>
-        );
-      })
-    }
-  </ol>
+            <div>
+              <dt>Courses</dt>
+              <dd>{featuredEnrolled.length}</dd>
+            </div>
+          </dl>
+        </div>
+        <div class="actions featured-actions">
+          <a class="button primary" href={`/sessions/${featured.code}/`}>
+            Manage enrolment<span class="visually-hidden"> for {featured.name}</span>
+          </a>
+          <a class="button" href={`/sessions/${featured.code}/search/`}>
+            Search courses<span class="visually-hidden"> in {featured.name}</span>
+          </a>
+        </div>
+      </section>
+    )
+  }
+
+  {
+    others.length > 0 && (
+      <section class="section" aria-labelledby="all-sessions">
+        <h2 id="all-sessions">{featured ? "Other sessions" : "Sessions"}</h2>
+        <ol class="session-grid">
+          {others.map((session) => {
+            const status = statusOf(session);
+            return (
+              <li class:list={["session-card", `status-${status.toLowerCase()}`]}>
+                <span class:list={["badge", `badge-${status.toLowerCase()}`]}>{status}</span>
+                <h3>
+                  <a href={`/sessions/${session.code}/`}>{session.name}</a>
+                </h3>
+                <p class="meta">
+                  {formatDate(session.startDate)} – {formatDate(session.endDate)}
+                </p>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
+    )
+  }
 </Base>

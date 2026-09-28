@@ -1,6 +1,7 @@
 import axe from "axe-core";
 import { JSDOM } from "jsdom";
 import { beforeAll, describe, expect, inject, it } from "vitest";
+import { POSTGRAD } from "./auth";
 import { ROUTES } from "./routes";
 
 // The invariants run against the RUNNING app — spec/global-setup.ts boots the
@@ -20,7 +21,8 @@ for (const route of ROUTES) {
     let doc: Document;
 
     beforeAll(async () => {
-      const res = await fetch(new URL(route, baseUrl));
+      // Signed in, so the real pages are checked rather than the sign-in redirect.
+      const res = await fetch(new URL(route, baseUrl), { headers: { cookie: POSTGRAD } });
       status = res.status;
       dom = new JSDOM(await res.text(), {
         url: new URL(route, baseUrl).href,

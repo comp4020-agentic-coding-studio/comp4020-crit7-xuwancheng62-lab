@@ -1,11 +1,12 @@
 ---
+import Crumbs from "../../../../../components/Crumbs.astro";
 import Base from "../../../../../layouts/Base.astro";
 import { getCourseView, getSession } from "../../../../../lib/db";
 import { assessmentItems, paragraphs, scheduleItems } from "../../../../../lib/format";
-import { student } from "../../../../../lib/student";
 
+const student = Astro.locals.student!;
 const session = getSession(Astro.params.session ?? "");
-const view = session && getCourseView(session.code, Astro.params.code ?? "", student.career);
+const view = session && getCourseView(session.code, Astro.params.code ?? "", student);
 if (!session || !view) return new Response("Course not offered in this session", { status: 404 });
 
 const { offering: course, eligible, alternative, equivalents } = view;
@@ -13,108 +14,124 @@ const base = `/sessions/${session.code}`;
 ---
 
 <Base title={`${course.code} ${course.name}`}>
-  <p class="crumbs">
-    <a href="/">Enrolment</a> › <a href={`${base}/`}>{session.name}</a> › {course.code}
-  </p>
-  <p class="code">{course.code}</p>
-  <h1>{course.name}</h1>
-  <p class="facts">
-    {course.units} units · {session.name} · {course.teachingMode}
-  </p>
+  <Crumbs items={[{ label: "Enrolment", href: "/" }, { label: session.name, href: `${base}/` }, { label: course.code }]} />
 
-  <div class:list={["eligibility", eligible ? "is-eligible" : "is-ineligible"]}>
-    {
-      eligible ? (
-        <>
-          <p class="ok">✓ Available for your program</p>
-          <p>
-            This is the {course.career.toLowerCase()} offering of {course.groupName}. {course.eligibility}
-          </p>
-        </>
-      ) : (
-        <>
-          <p class="warn">Not available for your academic career</p>
-          <p>
-            {course.code} is the {course.career.toLowerCase()} offering of {course.groupName}.
-            {alternative ? (
-              <>
-                {" "}Your program uses <strong>{alternative.code}</strong>.
-              </>
-            ) : (
-              <> There's no {student.career.toLowerCase()} version in {session.name}.</>
-            )}
-          </p>
-        </>
-      )
-    }
-  </div>
+  <header class="course-head">
+    <p class="code">{course.code}</p>
+    <h1>{course.name}</h1>
+    <p class="meta">
+      {course.units} units<span class="meta-sep" aria-hidden="true">·</span>
+      {course.teachingMode}<span class="meta-sep" aria-hidden="true">·</span>
+      {session.name}
+    </p>
+  </header>
 
-  <div class="actions">
-    {
-      eligible &&
-        (course.enrolled ? (
-          <span class="enrolled-tag">Enrolled in {session.name}</span>
+  <div class="course-layout">
+    <section class:list={["enrol-panel", { "is-ineligible": !eligible }]} aria-labelledby="enrol-title">
+      <h2 id="enrol-title">Enrolment</h2>
+      {
+        eligible ? (
+          <>
+            <p class="ok">✓ Available for your program</p>
+            <p>
+              This is the {course.career.toLowerCase()} offering of {course.groupName}. {course.eligibility}
+            </p>
+          </>
         ) : (
-          <a class="button primary" href={`${base}/courses/${course.code}/confirm/`}>
-            Add to {session.name}
-          </a>
-        ))
-    }
-    {
-      alternative && (
-        <a class="button primary" href={`${base}/courses/${alternative.code}/`}>
-          View {alternative.code}
-        </a>
-      )
-    }
-  </div>
+          <>
+            <p class="warn">Not available for your academic career</p>
+            <p>
+              {course.code} is the {course.career.toLowerCase()} offering of {course.groupName}.
+              {alternative ? (
+                <>
+                  {" "}Your program uses <strong>{alternative.code}</strong>.
+                </>
+              ) : (
+                <> There's no {student.career.toLowerCase()} version in {session.name}.</>
+              )}
+            </p>
+          </>
+        )
+      }
 
-  <section aria-labelledby="about">
-    <h2 id="about">About this course</h2>
-    {paragraphs(course.description).map((p) => <p>{p}</p>)}
-  </section>
+      {
+        (eligible || alternative) && (
+          <div class="actions">
+            {eligible &&
+              (course.enrolled ? (
+                <span class="enrolled-tag">Enrolled in {session.name}</span>
+              ) : (
+                <a class="button primary" href={`${base}/courses/${course.code}/confirm/`}>
+                  Add to {session.name}
+                </a>
+              ))}
+            {alternative && (
+              <a class="button primary" href={`${base}/courses/${alternative.code}/`}>
+                View {alternative.code}
+              </a>
+            )}
+          </div>
+        )
+      }
 
-  <section aria-labelledby="prereq">
-    <h2 id="prereq">Prerequisites</h2>
-    <p>{course.prerequisites}</p>
-  </section>
+      <dl class="key-facts">
+        <div><dt>Course code</dt><dd>{course.code}</dd></div>
+        <div><dt>Academic career</dt><dd>{course.career}</dd></div>
+        <div><dt>Units</dt><dd>{course.units}</dd></div>
+        <div><dt>Teaching mode</dt><dd>{course.teachingMode}</dd></div>
+        <div><dt>Session</dt><dd>{session.name}</dd></div>
+      </dl>
+    </section>
 
-  <section aria-labelledby="schedule">
-    <h2 id="schedule">Schedule in {session.name}</h2>
-    <table>
-      <thead>
-        <tr><th scope="col">Class</th><th scope="col">When</th><th scope="col">Where</th></tr>
-      </thead>
-      <tbody>
-        {scheduleItems(course.schedule).map((s) => <tr><td>{s.kind}</td><td>{s.when}</td><td>{s.where}</td></tr>)}
-      </tbody>
-    </table>
-  </section>
-
-  <section aria-labelledby="assessment">
-    <h2 id="assessment">Assessment</h2>
-    <table>
-      <thead>
-        <tr><th scope="col">Task</th><th scope="col">Weight</th></tr>
-      </thead>
-      <tbody>
-        {assessmentItems(course.assessment).map((a) => <tr><td>{a.item}</td><td>{a.weight}</td></tr>)}
-      </tbody>
-    </table>
-  </section>
-
-  {
-    equivalents.length > 0 && (
-      <section aria-labelledby="equivalent">
-        <h2 id="equivalent">Equivalent offering</h2>
-        <ul class="plain">
-          {equivalents.map((e) => (
-            <li>
-              {e.code} — {e.career}
-            </li>
-          ))}
-        </ul>
+    <div class="course-body">
+      <section aria-labelledby="about">
+        <h2 id="about">About this course</h2>
+        {paragraphs(course.description).map((p) => <p>{p}</p>)}
       </section>
-    )
-  }
+
+      <section aria-labelledby="prereq">
+        <h2 id="prereq">Prerequisites</h2>
+        <p>{course.prerequisites}</p>
+      </section>
+
+      <section aria-labelledby="schedule">
+        <h2 id="schedule">Schedule in {session.name}</h2>
+        <table>
+          <thead>
+            <tr><th scope="col">Class</th><th scope="col">When</th><th scope="col">Where</th></tr>
+          </thead>
+          <tbody>
+            {scheduleItems(course.schedule).map((s) => <tr><td>{s.kind}</td><td>{s.when}</td><td>{s.where}</td></tr>)}
+          </tbody>
+        </table>
+      </section>
+
+      <section aria-labelledby="assessment">
+        <h2 id="assessment">Assessment</h2>
+        <table>
+          <thead>
+            <tr><th scope="col">Task</th><th scope="col" class="weight">Weight</th></tr>
+          </thead>
+          <tbody>
+            {assessmentItems(course.assessment).map((a) => <tr><td>{a.item}</td><td class="weight">{a.weight}</td></tr>)}
+          </tbody>
+        </table>
+      </section>
+
+      {
+        equivalents.length > 0 && (
+          <section aria-labelledby="equivalent">
+            <h2 id="equivalent">Equivalent offering</h2>
+            <ul class="plain">
+              {equivalents.map((e) => (
+                <li>
+                  <span class="code">{e.code}</span> — {e.career}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      }
+    </div>
+  </div>
 </Base>

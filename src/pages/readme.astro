@@ -12,5 +12,7 @@ const html = (await readme.compiledContent()).replace(/(src|href)="public\//g, '
 ---
 
 <Base title={title}>
-  <Fragment set:html={html} />
+  <article class="prose">
+    <Fragment set:html={html} />
+  </article>
 </Base>

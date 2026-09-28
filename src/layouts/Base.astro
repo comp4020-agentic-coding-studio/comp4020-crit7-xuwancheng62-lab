@@ -1,11 +1,14 @@
 ---
-import { student } from "../lib/student";
+import { initials } from "../lib/student";
 import "../styles.css";
 
 interface Props {
   title: string;
 }
 const { title } = Astro.props;
+const student = Astro.locals.student;
+const path = Astro.url.pathname;
+const section = path.startsWith("/readme") ? "about" : path.startsWith("/sign-in") ? "sign-in" : "enrolment";
 ---
 
 <!doctype html>
@@ -13,24 +16,59 @@ const { title } = Astro.props;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title} · Enrolment (ISIS redesign)</title>
+    <title>{title} · ANU Student Services (prototype)</title>
   </head>
   <body>
-    <header class="topbar">
-      <div class="topbar-inner">
-        <a class="brand" href="/">Enrolment <span>ISIS redesign prototype</span></a>
-        <nav aria-label="site">
-          <a href="/">Enrolment</a>
-          <a href="/readme/">About</a>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="wrap site-header-main">
+        <a class="wordmark" href="/">
+          <span class="wordmark-name">ANU Student Services</span>
+          <span class="wordmark-tag">Prototype</span>
+        </a>
+        <nav class="site-nav" aria-label="Site">
+          <ul>
+            <li><a href="/" aria-current={section === "enrolment" ? "page" : undefined}>Enrolment</a></li>
+            <li><a href="/readme/" aria-current={section === "about" ? "page" : undefined}>About</a></li>
+          </ul>
         </nav>
       </div>
-      <p class="student">
-        <span class="student-name">{student.name}</span>
-        {student.program} · {student.career}
-      </p>
+      <div class="identity-bar">
+        <div class="wrap identity-inner">
+          {
+            student ? (
+              <>
+                <div class="identity">
+                  <span class="avatar" aria-hidden="true">{initials(student.name)}</span>
+                  <p class="identity-text">
+                    <span class="visually-hidden">Signed in as </span>
+                    <strong>{student.name}</strong>
+                    <span class="identity-program">{student.program}</span>
+                  </p>
+                  <span class="career-pill">{student.career}</span>
+                </div>
+                <form method="post" action="/api/session">
+                  <input type="hidden" name="action" value="sign-out" />
+                  <button class="identity-switch">Switch student</button>
+                </form>
+              </>
+            ) : (
+              <p class="identity-text">
+                Not signed in{section !== "sign-in" && (<> · <a href="/sign-in/">Sign in</a></>)}
+              </p>
+            )
+          }
+        </div>
+      </div>
     </header>
-    <main>
+    <main id="main" class="wrap">
       <slot />
     </main>
+    <footer class="site-footer">
+      <p class="wrap">
+        A student coursework prototype, not an official ANU service. Sign-in is simulated and course information is
+        illustrative.
+      </p>
+    </footer>
   </body>
 </html>

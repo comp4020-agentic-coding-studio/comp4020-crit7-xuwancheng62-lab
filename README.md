@@ -14,9 +14,14 @@ student profile.**
 
 ## The flow
 
-Choose semester → search by name, code or topic → course details → Add →
-confirm → enrolled.
+Sign in as a demo student → choose semester → search by name, code or
+topic → course details → Add → confirm → enrolled.
 
+- **Sign in establishes who you are.** The sign-in is simulated: you pick one
+  of two demo profiles (an undergraduate, or a postgraduate in the Master of
+  Computing), and a cookie remembers the choice. The profile's name, program
+  and academic career sit in the header, and every search, eligibility check
+  and enrolment uses it. Each profile has its own enrolments.
 - **Sessions in date order.** Every session is listed by its start date with
   a Past, Current or Upcoming label, and the current (or next) semester is
   highlighted in place.
@@ -29,10 +34,10 @@ confirm → enrolled.
   this redesign removes.
 - **The right variant, automatically.** Some subjects have separate
   undergraduate and postgraduate codes (COMP4020 and COMP8020 are one
-  subject, *Agentic Coding Studio*). The demo student is a postgraduate in the
-  Master of Computing, so searching for the subject shows COMP8020. If they
-  type COMP4020, the result explains that it isn't available for their
-  academic career and points to COMP8020. An ineligible course has no Add
+  subject, *Agentic Coding Studio*). Signed in as the postgraduate, searching
+  for the subject shows COMP8020; signed in as the undergraduate, it shows
+  COMP4020. If the postgraduate types COMP4020, the result explains that it
+  isn't available for their academic career and points to COMP8020. An ineligible course has no Add
   button, and the server refuses it too.
 - **No Class Number, anywhere.** The class number is the database key for an
   offering. It is resolved on the server when you confirm and never shown or
@@ -44,7 +49,9 @@ Good means a student can enrol in the right course without knowing anything
 administrative, and can see why when a course isn't for them.
 
 - **Enforced by checks** (`spec/`):
+  - pages ask you to sign in first, and the chosen profile is remembered
   - an enrolment persists across a reload
+  - each profile sees its own variant and its own enrolments
   - the server refuses the ineligible variant and saves nothing
   - every page meets the structural and accessibility floor
 - **Judgement calls, left to the crit:** whether the flow is clearer than
@@ -53,8 +60,8 @@ administrative, and can see why when a course isn't for them.
 
 ## What this prototype doesn't do
 
-- no sign-in: one fixed demo student stands in for "the system knows who you
-  are"
+- no real authentication: no passwords, ANU SSO or OAuth. Choosing a demo
+  profile stands in for "the system knows who you are"
 - eligibility is one simple rule (course career = student career), not ANU's
   degree rules
 - no dropping or swapping courses, class-time choices, timetable-clash
