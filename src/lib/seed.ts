@@ -1,8 +1,11 @@
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { sql } from "drizzle-orm";
+import type { ImportedCourse } from "../../scripts/import-anu-catalogue";
+import snapshot from "./catalogue/anu-2026-comp.json";
 import { classes, courseGroups, courses, sessions } from "./schema";
 
-// Illustrative catalogue for the prototype, not authoritative ANU data.
+// The catalogue: hand-curated courses below (illustrative timetables and
+// assessment), plus 2026 COMP courses imported from ANU Programs & Courses.
 // Upserted on every boot so catalogue edits reach the deployed volume; the
 // enrolments table is never touched here.
 
@@ -300,32 +303,88 @@ const CATALOGUE: CourseSeed[] = [
   },
 ];
 
+// Imported ANU courses (scripts/import-anu-catalogue.ts) fill out the
+// catalogue; a hand-curated course above wins over an imported one with the
+// same code, keeping its topic, illustrative timetable and class numbers.
+function importedCatalogue(curated: CourseSeed[], taken: Set<number>, digitOf: Map<string, number>) {
+  const curatedCodes = new Set(curated.map((c) => c.code));
+  const groupByName = new Map(curated.map((c) => [c.name.toLowerCase(), c.groupId]));
+  const groups = new Map<string, { id: string; name: string; summary: string }>();
+  const rows: { course: typeof courses.$inferInsert; classes: (typeof classes.$inferInsert)[] }[] = [];
+
+  for (const c of (snapshot as { courses: ImportedCourse[] }).courses) {
+    if (curatedCodes.has(c.code)) continue;
+    let groupId = groupByName.get(c.name.toLowerCase());
+    if (!groupId) {
+      groupId = `anu-${c.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+      if (!groups.has(groupId)) groups.set(groupId, { id: groupId, name: c.name, summary: c.summary });
+    }
+    const offered = c.offerings.filter((o) => digitOf.has(o.session));
+    rows.push({
+      course: {
+        code: c.code,
+        groupId,
+        career: c.career,
+        eligibility: c.career === "Postgraduate" ? PG_ELIGIBILITY : UG_ELIGIBILITY,
+        name: c.name,
+        units: c.units,
+        summary: c.summary,
+        description: c.description,
+        prerequisites: c.prerequisites,
+        teachingMode: c.teachingMode,
+        assessment: c.assessment,
+      },
+      // ANU's own class number where it has one and it's free; otherwise a
+      // stable number outside ANU's range. Never shown either way.
+      classes: offered.map((o) => {
+        const fallback = 1_000_000 + Number(c.code.slice(4)) * 10 + digitOf.get(o.session)!;
+        const classNumber = o.classNumber && !taken.has(o.classNumber) ? o.classNumber : fallback;
+        taken.add(classNumber);
+        return { classNumber, courseCode: c.code, sessionCode: o.session, schedule: "" };
+      }),
+    });
+  }
+  return { groups: [...groups.values()], rows };
+}
+
 export function seedCatalogue(db: BetterSQLite3Database) {
   const digitOf = new Map(SESSIONS.map((s) => [s.code, s.digit]));
+  // Stable across deploys so existing enrolments keep pointing at the same class.
+  const curatedClasses = CATALOGUE.flatMap((course) =>
+    course.sessions.map((sessionCode) => ({
+      classNumber: (digitOf.get(sessionCode) ?? 9) * 1000 + course.id,
+      courseCode: course.code,
+      sessionCode,
+      schedule: course.schedule,
+    })),
+  );
+  const imported = importedCatalogue(CATALOGUE, new Set(curatedClasses.map((c) => c.classNumber)), digitOf);
+
   db.transaction((tx) => {
     for (const { digit: _digit, ...session } of SESSIONS) {
       tx.insert(sessions).values(session).onConflictDoUpdate({ target: sessions.code, set: session }).run();
     }
-    for (const group of GROUPS) {
+    for (const group of [...GROUPS, ...imported.groups]) {
       tx.insert(courseGroups).values(group).onConflictDoUpdate({ target: courseGroups.id, set: group }).run();
     }
-    for (const { id: _id, schedule: _schedule, sessions: _sessions, ...course } of CATALOGUE) {
-      const row = {
+    const courseRows = [
+      ...CATALOGUE.map(({ id: _id, schedule: _schedule, sessions: _sessions, ...course }) => ({
         ...course,
         eligibility: course.career === "Postgraduate" ? PG_ELIGIBILITY : UG_ELIGIBILITY,
-      };
+      })),
+      ...imported.rows.map((r) => r.course),
+    ];
+    for (const row of courseRows) {
       tx.insert(courses).values(row).onConflictDoUpdate({ target: courses.code, set: row }).run();
     }
-    for (const course of CATALOGUE) {
-      for (const sessionCode of course.sessions) {
-        // Stable across deploys so existing enrolments keep pointing at the same class.
-        const classNumber = (digitOf.get(sessionCode) ?? 9) * 1000 + course.id;
-        const row = { classNumber, courseCode: course.code, sessionCode, schedule: course.schedule };
-        tx.insert(classes)
-          .values(row)
-          .onConflictDoUpdate({ target: classes.classNumber, set: { schedule: sql`excluded.schedule` } })
-          .run();
-      }
+    for (const row of [...curatedClasses, ...imported.rows.flatMap((r) => r.classes)]) {
+      tx.insert(classes)
+        .values(row)
+        .onConflictDoUpdate({
+          target: classes.classNumber,
+          set: { courseCode: sql`excluded.course_code`, sessionCode: sql`excluded.session_code`, schedule: sql`excluded.schedule` },
+        })
+        .run();
     }
   });
 }
