@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { enrol } from "../../lib/db";
+import { enrol, MAX_COURSES_PER_SESSION } from "../../lib/db";
 
 // The confirm page's form posts session + course code; the class number is
 // resolved here, server-side, against the signed-in student's career.
@@ -11,5 +11,6 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
   const result = enrol(session, course, locals.student!);
   if (result === "not-offered") return new Response("Course not offered in this session", { status: 400 });
   if (result === "ineligible") return new Response("Not available for your academic career", { status: 403 });
+  if (result === "limit") return new Response(`You're already enrolled in ${MAX_COURSES_PER_SESSION} courses this session`, { status: 409 });
   return redirect(`/sessions/${encodeURIComponent(session)}/?added=${encodeURIComponent(course)}`, 303);
 };

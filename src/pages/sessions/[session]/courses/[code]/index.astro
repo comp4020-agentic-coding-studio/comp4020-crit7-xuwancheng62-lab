@@ -1,7 +1,8 @@
 ---
 import Crumbs from "../../../../../components/Crumbs.astro";
 import Base from "../../../../../layouts/Base.astro";
-import { getCourseView, getSession } from "../../../../../lib/db";
+import { getCourseView, getSession, listEnrolments, MAX_COURSES_PER_SESSION } from "../../../../../lib/db";
+import { isRecommended } from "../../../../../lib/programs";
 import { assessmentItems, paragraphs, scheduleItems } from "../../../../../lib/format";
 
 const student = Astro.locals.student!;
@@ -11,13 +12,18 @@ if (!session || !view) return new Response("Course not offered in this session",
 
 const { offering: course, eligible, alternative, equivalents } = view;
 const base = `/sessions/${session.code}`;
+const recommended = eligible && isRecommended(student.program, course.groupId);
+const atLimit = !course.enrolled && listEnrolments(session.code, student.id).length >= MAX_COURSES_PER_SESSION;
 ---
 
 <Base title={`${course.code} ${course.name}`}>
   <Crumbs items={[{ label: "Enrolment", href: "/" }, { label: session.name, href: `${base}/` }, { label: course.code }]} />
 
   <header class="course-head">
-    <p class="code">{course.code}</p>
+    <p class="code-line">
+      <span class="code">{course.code}</span>
+      {recommended && <span class="rec-tag">Recommended for your program</span>}
+    </p>
     <h1>{course.name}</h1>
     <p class="meta">
       {course.units} units<span class="meta-sep" aria-hidden="true">·</span>
@@ -32,7 +38,7 @@ const base = `/sessions/${session.code}`;
       {
         eligible ? (
           <>
-            <p class="ok">✓ Available for your program</p>
+            <p class="ok">✓ Available at your study level</p>
             <p>
               This is the {course.career.toLowerCase()} offering of {course.groupName}. {course.eligibility}
             </p>
@@ -60,6 +66,11 @@ const base = `/sessions/${session.code}`;
             {eligible &&
               (course.enrolled ? (
                 <span class="enrolled-tag">Enrolled in {session.name}</span>
+              ) : atLimit ? (
+                <p class="notice-limit">
+                  You're already enrolled in {MAX_COURSES_PER_SESSION} courses this session, the most allowed. To take
+                  this course, <a href={`${base}/`}>switch or drop one of your courses</a> first.
+                </p>
               ) : (
                 <a class="button primary" href={`${base}/courses/${course.code}/confirm/`}>
                   Add to {session.name}
@@ -96,14 +107,23 @@ const base = `/sessions/${session.code}`;
 
       <section aria-labelledby="schedule">
         <h2 id="schedule">Schedule in {session.name}</h2>
-        <table>
-          <thead>
-            <tr><th scope="col">Class</th><th scope="col">When</th><th scope="col">Where</th></tr>
-          </thead>
-          <tbody>
-            {scheduleItems(course.schedule).map((s) => <tr><td>{s.kind}</td><td>{s.when}</td><td>{s.where}</td></tr>)}
-          </tbody>
-        </table>
+        {
+          scheduleItems(course.schedule).length > 0 ? (
+            <table>
+              <thead>
+                <tr><th scope="col">Class</th><th scope="col">When</th><th scope="col">Where</th></tr>
+              </thead>
+              <tbody>
+                {scheduleItems(course.schedule).map((s) => <tr><td>{s.kind}</td><td>{s.when}</td><td>{s.where}</td></tr>)}
+              </tbody>
+            </table>
+          ) : (
+            <p class="schedule-pending">
+              Class times aren't published here yet. ANU releases the timetable in MyTimetable before the session
+              starts.
+            </p>
+          )
+        }
       </section>
 
       <section aria-labelledby="assessment">

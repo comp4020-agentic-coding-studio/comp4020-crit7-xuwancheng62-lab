@@ -1,8 +1,9 @@
 ---
 import Crumbs from "../../../../../components/Crumbs.astro";
+import ScheduleList from "../../../../../components/ScheduleList.astro";
 import Base from "../../../../../layouts/Base.astro";
-import { getCourseView, getSession, listEnrolments } from "../../../../../lib/db";
-import { formatDate, scheduleItems, totalUnits } from "../../../../../lib/format";
+import { getCourseView, getSession, listEnrolments, MAX_COURSES_PER_SESSION } from "../../../../../lib/db";
+import { formatDate, totalUnits } from "../../../../../lib/format";
 
 const student = Astro.locals.student!;
 const session = getSession(Astro.params.session ?? "");
@@ -11,7 +12,9 @@ if (!session || !view || !view.eligible) return new Response("Not available", { 
 
 const course = view.offering;
 const base = `/sessions/${session.code}`;
-const current = totalUnits(listEnrolments(session.code, student.id));
+const taken = listEnrolments(session.code, student.id);
+const current = totalUnits(taken);
+const atLimit = taken.length >= MAX_COURSES_PER_SESSION;
 ---
 
 <Base title={`Confirm ${course.code}`}>
@@ -32,6 +35,18 @@ const current = totalUnits(listEnrolments(session.code, student.id));
         <p class="banner" role="status">
           You're already enrolled in {course.code}. <a href={`${base}/`}>Back to {session.name}</a>
         </p>
+      ) : atLimit ? (
+        <>
+          <p class="notice-limit" role="status">
+            You're enrolled in {MAX_COURSES_PER_SESSION} courses in {session.name}, the most allowed, so {course.code}{" "}
+            can't be added.
+          </p>
+          <div class="actions">
+            <a class="button primary large" href={`${base}/`}>
+              Back to {session.name}
+            </a>
+          </div>
+        </>
       ) : (
         <>
           <p class="lede">Check the details below, then confirm to add this course to your enrolment.</p>
@@ -51,18 +66,15 @@ const current = totalUnits(listEnrolments(session.code, student.id));
               <dd>{course.units}</dd>
               <dt>Schedule</dt>
               <dd>
-                <ul class="schedule-list">
-                  {scheduleItems(course.schedule).map((s) => (
-                    <li>
-                      <strong>{s.kind}</strong> · {s.when}
-                      {s.where && <span> · {s.where}</span>}
-                    </li>
-                  ))}
-                </ul>
+                <ScheduleList schedule={course.schedule} />
               </dd>
               <dt>Your load</dt>
               <dd class="load">
                 {current} → <strong>{current + course.units}</strong> units this session
+                <br />
+                <span class="meta">
+                  Course {taken.length + 1} of {MAX_COURSES_PER_SESSION} allowed
+                </span>
               </dd>
             </dl>
           </section>

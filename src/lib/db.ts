@@ -4,8 +4,10 @@ import Database from "better-sqlite3";
 import { and, asc, eq, getTableColumns } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
-import { type Course, classes, courseGroups, courses, enrolments, type Session, sessions } from "./schema";
+import { isRecommended } from "./programs";
+import { type Career, type Course, classes, courseGroups, courses, enrolments, type Session, sessions, students } from "./schema";
 import { seedCatalogue } from "./seed";
+import { isArchived } from "./sessions";
 import type { Student } from "./student";
 
 // One SQLite file is the app's whole persistent state. In production
@@ -29,6 +31,24 @@ seedCatalogue(db);
 
 export type SessionStatus = "Past" | "Current" | "Upcoming";
 
+// The one enrolment rule the prototype enforces.
+export const MAX_COURSES_PER_SESSION = 4;
+
+export type StudentRecord = typeof students.$inferSelect;
+
+export function getStudent(id: string): StudentRecord | undefined {
+  return db.select().from(students).where(eq(students.id, id)).get();
+}
+
+export function ensureStudent(id: string): StudentRecord {
+  db.insert(students).values({ id }).onConflictDoNothing().run();
+  return getStudent(id)!;
+}
+
+export function saveProfile(id: string, career: Career, program: string) {
+  db.update(students).set({ career, program }).where(eq(students.id, id)).run();
+}
+
 // A course as offered in one session. The class number stays out of it on
 // purpose: pages never see it.
 export type Offering = Course & { groupName: string; schedule: string; enrolled: boolean };
@@ -43,8 +63,14 @@ export function statusOf(session: Session, today = canberraToday()): SessionStat
   return "Upcoming";
 }
 
+// Sessions open to enrolment pages. Archived ones appear only in history.
 export function listSessions(): Session[] {
-  return db.select().from(sessions).orderBy(asc(sessions.startDate)).all();
+  return db
+    .select()
+    .from(sessions)
+    .orderBy(asc(sessions.startDate))
+    .all()
+    .filter((s) => !isArchived(s));
 }
 
 // The session containing today, else the next one to start.
@@ -55,7 +81,8 @@ export function featuredSession(all: Session[], today = canberraToday()): Sessio
 }
 
 export function getSession(code: string): Session | undefined {
-  return db.select().from(sessions).where(eq(sessions.code, code)).get();
+  const session = db.select().from(sessions).where(eq(sessions.code, code)).get();
+  return session && !isArchived(session) ? session : undefined;
 }
 
 function offerings(sessionCode: string, studentId: string): Offering[] {
@@ -84,6 +111,7 @@ export type SubjectResult = {
   eligible: Offering | null;
   // shown muted: the variant this student can't take, when there's reason to mention it
   ineligible: Offering | null;
+  recommended: boolean;
 };
 
 // The student searches for a subject; the system picks the variant their
@@ -108,11 +136,17 @@ export function searchSubjects(sessionCode: string, query: string, student: Stud
     const ineligible = eligible
       ? (matchedHere.find((m) => compact.includes(m.code.toLowerCase())) ?? null)
       : (matchedHere[0] ?? null);
-    results.push({ groupName: variants[0].groupName, eligible, ineligible });
+    results.push({
+      groupName: variants[0].groupName,
+      eligible,
+      ineligible,
+      recommended: isRecommended(student.program, groupId),
+    });
   }
   return results.sort(
     (a, b) =>
       Number(!a.eligible) - Number(!b.eligible) ||
+      Number(!a.recommended) - Number(!b.recommended) ||
       (a.eligible ?? a.ineligible)!.code.localeCompare((b.eligible ?? b.ineligible)!.code),
   );
 }
@@ -148,19 +182,144 @@ export function listEnrolments(sessionCode: string, studentId: string): Offering
   return offerings(sessionCode, studentId).filter((o) => o.enrolled);
 }
 
-export function enrol(
-  sessionCode: string,
-  courseCode: string,
-  student: Student,
-): "ok" | "not-offered" | "ineligible" {
-  const found = db
+// The student's own variants of their program's recommended subjects, leaving
+// out any subject they've enrolled in in any session.
+export function listRecommended(sessionCode: string, student: Student): Offering[] {
+  const taken = new Set(
+    db
+      .select({ groupId: courses.groupId })
+      .from(enrolments)
+      .innerJoin(classes, eq(enrolments.classNumber, classes.classNumber))
+      .innerJoin(courses, eq(classes.courseCode, courses.code))
+      .where(eq(enrolments.studentId, student.id))
+      .all()
+      .map((r) => r.groupId),
+  );
+  return offerings(sessionCode, student.id).filter(
+    (o) => o.career === student.career && !taken.has(o.groupId) && isRecommended(student.program, o.groupId),
+  );
+}
+
+export type EnrolmentHistory = { session: Session; courses: Pick<Course, "code" | "name" | "units">[] }[];
+
+// Every session the student has enrolled in, in date order.
+export function enrolmentHistory(studentId: string): EnrolmentHistory {
+  const rows = db
+    .select({ session: sessions, code: courses.code, name: courses.name, units: courses.units })
+    .from(enrolments)
+    .innerJoin(classes, eq(enrolments.classNumber, classes.classNumber))
+    .innerJoin(courses, eq(classes.courseCode, courses.code))
+    .innerJoin(sessions, eq(classes.sessionCode, sessions.code))
+    .where(eq(enrolments.studentId, studentId))
+    .orderBy(asc(sessions.startDate), asc(courses.code))
+    .all();
+  const history: EnrolmentHistory = [];
+  for (const { session, ...course } of rows) {
+    const last = history.at(-1);
+    if (last?.session.code === session.code) last.courses.push(course);
+    else history.push({ session, courses: [course] });
+  }
+  return history;
+}
+
+export function getCourse(code: string): Course | undefined {
+  return db.select().from(courses).where(eq(courses.code, code)).get();
+}
+
+type Tx = Pick<typeof db, "select" | "insert" | "delete">;
+
+function classIn(tx: Tx, sessionCode: string, courseCode: string) {
+  return tx
     .select({ classNumber: classes.classNumber, career: courses.career })
     .from(classes)
     .innerJoin(courses, eq(classes.courseCode, courses.code))
     .where(and(eq(classes.sessionCode, sessionCode), eq(classes.courseCode, courseCode)))
     .get();
+}
+
+function enrolledClassNumbers(tx: Tx, sessionCode: string, studentId: string): number[] {
+  return tx
+    .select({ classNumber: enrolments.classNumber })
+    .from(enrolments)
+    .innerJoin(classes, eq(enrolments.classNumber, classes.classNumber))
+    .where(and(eq(enrolments.studentId, studentId), eq(classes.sessionCode, sessionCode)))
+    .all()
+    .map((r) => r.classNumber);
+}
+
+type AddResult = "ok" | "not-offered" | "ineligible" | "already-enrolled" | "limit";
+
+// The one place the enrolment rules live; Add and Switch both go through it.
+function addEnrolment(tx: Tx, sessionCode: string, courseCode: string, student: Student): AddResult {
+  if (!getSession(sessionCode)) return "not-offered";
+  const found = classIn(tx, sessionCode, courseCode);
   if (!found) return "not-offered";
   if (found.career !== student.career) return "ineligible";
-  db.insert(enrolments).values({ studentId: student.id, classNumber: found.classNumber }).onConflictDoNothing().run();
+  const taken = enrolledClassNumbers(tx, sessionCode, student.id);
+  if (taken.includes(found.classNumber)) return "already-enrolled";
+  if (taken.length >= MAX_COURSES_PER_SESSION) return "limit";
+  tx.insert(enrolments).values({ studentId: student.id, classNumber: found.classNumber }).run();
   return "ok";
+}
+
+export function enrol(
+  sessionCode: string,
+  courseCode: string,
+  student: Student,
+): "ok" | "not-offered" | "ineligible" | "limit" {
+  const result = addEnrolment(db, sessionCode, courseCode, student);
+  return result === "already-enrolled" ? "ok" : result;
+}
+
+// Drop and Switch only change enrolments in sessions that haven't ended.
+function sessionOpen(sessionCode: string) {
+  const session = getSession(sessionCode);
+  return session !== undefined && statusOf(session) !== "Past";
+}
+
+export type DropResult = "ok" | "not-enrolled" | "closed";
+
+export function dropCourse(sessionCode: string, courseCode: string, student: Student): DropResult {
+  if (!sessionOpen(sessionCode)) return "closed";
+  const found = classIn(db, sessionCode, courseCode);
+  if (!found) return "not-enrolled";
+  const { changes } = db
+    .delete(enrolments)
+    .where(and(eq(enrolments.studentId, student.id), eq(enrolments.classNumber, found.classNumber)))
+    .run();
+  return changes > 0 ? "ok" : "not-enrolled";
+}
+
+export type SwitchResult = "ok" | "same" | "closed" | "not-enrolled" | Exclude<AddResult, "ok">;
+
+class SwitchRejected extends Error {
+  constructor(readonly reason: Exclude<SwitchResult, "ok">) {
+    super(reason);
+  }
+}
+
+// Drop `from` and add `to` in one transaction. The add runs the normal rules
+// after the drop (so a student at the limit can still switch); if any rule
+// fails, the transaction rolls back and the original enrolment is untouched.
+export function switchCourse(sessionCode: string, from: string, to: string, student: Student): SwitchResult {
+  if (from === to) return "same";
+  if (!sessionOpen(sessionCode)) return "closed";
+  try {
+    db.transaction((tx) => {
+      const original = classIn(tx, sessionCode, from);
+      const removed = original
+        ? tx
+            .delete(enrolments)
+            .where(and(eq(enrolments.studentId, student.id), eq(enrolments.classNumber, original.classNumber)))
+            .run().changes
+        : 0;
+      if (removed === 0) throw new SwitchRejected("not-enrolled");
+      const added = addEnrolment(tx, sessionCode, to, student);
+      if (added !== "ok") throw new SwitchRejected(added);
+    });
+    return "ok";
+  } catch (error) {
+    if (error instanceof SwitchRejected) return error.reason;
+    throw error;
+  }
 }

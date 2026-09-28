@@ -1,0 +1,77 @@
+---
+import Crumbs from "../../../../../components/Crumbs.astro";
+import Base from "../../../../../layouts/Base.astro";
+import { getSession, listEnrolments, MAX_COURSES_PER_SESSION, statusOf } from "../../../../../lib/db";
+import { formatDate, totalUnits } from "../../../../../lib/format";
+
+const student = Astro.locals.student!;
+const session = getSession(Astro.params.session ?? "");
+if (!session) return new Response("Session not found", { status: 404 });
+
+const code = Astro.params.code ?? "";
+const base = `/sessions/${session.code}`;
+const enrolled = listEnrolments(session.code, student.id);
+const course = enrolled.find((c) => c.code === code);
+const closed = statusOf(session) === "Past";
+const before = totalUnits(enrolled);
+---
+
+<Base title={`Drop ${code}`}>
+  <Crumbs items={[{ label: "Enrolment", href: "/" }, { label: session.name, href: `${base}/` }, { label: `Drop ${code}` }]} />
+
+  <div class="narrow">
+    <h1>Drop a course</h1>
+
+    {
+      closed ? (
+        <p class="notice-limit" role="status">
+          {session.name} has ended, so its enrolments can't be changed. <a href={`${base}/`}>Back to {session.name}</a>
+        </p>
+      ) : !course ? (
+        <p class="notice-limit" role="status">
+          You're not enrolled in {code} in {session.name}. <a href={`${base}/`}>Back to {session.name}</a>
+        </p>
+      ) : (
+        <>
+          <p class="lede">Check the details, then confirm. You can add the course again later.</p>
+          <section class="confirm-card is-drop" aria-labelledby="drop-course">
+            <p class="code">{course.code}</p>
+            <h2 id="drop-course">{course.name}</h2>
+            <dl class="summary">
+              <dt>Session</dt>
+              <dd>
+                {session.name}
+                <br />
+                <span class="meta">
+                  {formatDate(session.startDate)} – {formatDate(session.endDate)}
+                </span>
+              </dd>
+              <dt>Units</dt>
+              <dd>{course.units}</dd>
+              <dt>Your load</dt>
+              <dd class="load">
+                {before} → <strong>{before - course.units}</strong> units this session
+                <br />
+                <span class="meta">
+                  {enrolled.length - 1} of {MAX_COURSES_PER_SESSION} courses after dropping
+                </span>
+              </dd>
+            </dl>
+          </section>
+          <form method="post" action="/api/drop" class="actions">
+            <input type="hidden" name="session" value={session.code} />
+            <input type="hidden" name="course" value={course.code} />
+            <button class="button danger large">Confirm drop</button>
+            <a class="button quiet large" href={`${base}/`}>
+              Keep {course.code}
+            </a>
+          </form>
+          <p class="hint">
+            Want a different course instead? <a href={`${base}/courses/${course.code}/switch/`}>Switch {course.code}</a>{" "}
+            keeps your place until the new course is confirmed.
+          </p>
+        </>
+      )
+    }
+  </div>
+</Base>

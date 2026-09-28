@@ -1,0 +1,67 @@
+---
+import SessionEnrolments from "../../components/SessionEnrolments.astro";
+import Base from "../../layouts/Base.astro";
+import { enrolmentHistory, statusOf } from "../../lib/db";
+import { findProgram } from "../../lib/programs";
+
+const student = Astro.locals.student!;
+const program = findProgram(student.program)!;
+const history = enrolmentHistory(student.id).map((entry) => ({ ...entry, status: statusOf(entry.session) }));
+const current = history.filter((h) => h.status !== "Past");
+const previous = history.filter((h) => h.status === "Past").reverse();
+const saved = Astro.url.searchParams.has("saved");
+---
+
+<Base title="Profile">
+  <header class="page-head">
+    <p class="eyebrow">Student profile</p>
+    <h1>{student.id}</h1>
+  </header>
+
+  {
+    saved && (
+      <p class="banner" role="status">
+        Profile saved.
+      </p>
+    )
+  }
+
+  <section class="profile-panel" aria-labelledby="details-title">
+    <div class="profile-panel-head">
+      <h2 id="details-title">Academic profile</h2>
+      <a class="button" href="/profile/edit/">Edit profile</a>
+    </div>
+    <dl class="summary">
+      <dt>Student ID</dt>
+      <dd>{student.id}</dd>
+      <dt>Study level</dt>
+      <dd>{student.career}</dd>
+      <dt>Program</dt>
+      <dd>{program.name}</dd>
+    </dl>
+  </section>
+
+  <section class="section" aria-labelledby="current-title">
+    <h2 id="current-title">Current enrolments</h2>
+    {
+      current.length === 0 ? (
+        <p class="empty">
+          You're not enrolled in any current or upcoming sessions. <a href="/">Choose a semester</a> to add courses.
+        </p>
+      ) : (
+        current.map(({ session, courses, status }) => <SessionEnrolments {session} {courses} {status} />)
+      )
+    }
+  </section>
+
+  <section class="section" aria-labelledby="history-title">
+    <h2 id="history-title">Enrolment history</h2>
+    {
+      previous.length === 0 ? (
+        <p class="empty">No enrolments in earlier sessions.</p>
+      ) : (
+        previous.map(({ session, courses, status }) => <SessionEnrolments {session} {courses} {status} />)
+      )
+    }
+  </section>
+</Base>

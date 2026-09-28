@@ -1,8 +1,9 @@
 ---
 import Crumbs from "../../../components/Crumbs.astro";
+import ScheduleList from "../../../components/ScheduleList.astro";
 import Base from "../../../layouts/Base.astro";
-import { getSession, listEnrolments, statusOf } from "../../../lib/db";
-import { formatDate, scheduleItems, totalUnits } from "../../../lib/format";
+import { getCourse, getSession, listEnrolments, listRecommended, MAX_COURSES_PER_SESSION, statusOf } from "../../../lib/db";
+import { formatDate, totalUnits } from "../../../lib/format";
 
 const session = getSession(Astro.params.session ?? "");
 if (!session) return new Response("Session not found", { status: 404 });
@@ -13,6 +14,13 @@ const enrolled = listEnrolments(session.code, student.id);
 const units = totalUnits(enrolled);
 const added = Astro.url.searchParams.get("added");
 const addedCourse = enrolled.find((c) => c.code === added);
+const params = Astro.url.searchParams;
+const dropped = getCourse(params.get("dropped") ?? "");
+const switchedFrom = getCourse(params.get("switched") ?? "");
+const switchedTo = enrolled.find((c) => c.code === params.get("to"));
+const changeable = status !== "Past";
+const atLimit = enrolled.length >= MAX_COURSES_PER_SESSION;
+const recommended = atLimit ? [] : listRecommended(session.code, student);
 ---
 
 <Base title={session.name}>
@@ -31,13 +39,28 @@ const addedCourse = enrolled.find((c) => c.code === added);
       </div>
       <div>
         <dt>Courses</dt>
-        <dd>{enrolled.length}</dd>
+        <dd>{enrolled.length} <small>of {MAX_COURSES_PER_SESSION}</small></dd>
       </div>
     </dl>
   </header>
 
   {
-    addedCourse && (
+    dropped && (
+      <p class="banner" role="status">
+        You've dropped <strong>{dropped.code} {dropped.name}</strong>.
+      </p>
+    )
+  }
+  {
+    switchedFrom && switchedTo && (
+      <p class="banner" role="status">
+        You've switched from <strong>{switchedFrom.code} {switchedFrom.name}</strong> to{" "}
+        <strong>{switchedTo.code} {switchedTo.name}</strong>.
+      </p>
+    )
+  }
+  {
+    addedCourse && !switchedTo && (
       <p class="banner" role="status">
         You're enrolled in <strong>{addedCourse.code} {addedCourse.name}</strong>.
       </p>
@@ -46,7 +69,16 @@ const addedCourse = enrolled.find((c) => c.code === added);
 
   <section class="cta-panel" aria-labelledby="add-title">
     <h2 id="add-title">Add a course</h2>
-    <p>Search by the course name, code or a topic you're interested in.</p>
+    {
+      atLimit ? (
+        <p class="notice-limit">
+          You're enrolled in {MAX_COURSES_PER_SESSION} courses this session, the most allowed. To take a different
+          course, use Switch on one of your courses below, or drop one first.
+        </p>
+      ) : (
+        <p>Search by the course name, code or a topic you're interested in.</p>
+      )
+    }
     <form class="search" method="get" action={`/sessions/${session.code}/search/`}>
       <label for="q">Course name, code or topic</label>
       <div class="search-row">
@@ -55,6 +87,27 @@ const addedCourse = enrolled.find((c) => c.code === added);
       </div>
     </form>
   </section>
+
+  {
+    recommended.length > 0 && (
+      <section class="section" aria-labelledby="recommended-title">
+        <h2 id="recommended-title">Recommended for your program</h2>
+        <ul class="rec-list">
+          {recommended.map((c) => (
+            <li>
+              <a class="rec-card" href={`/sessions/${session.code}/courses/${c.code}/`}>
+                <span class="code">{c.code}</span>
+                <span class="rec-name">{c.name}</span>
+                <span class="meta">
+                  {c.units} units · {c.teachingMode}
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
 
   <section class="section" aria-labelledby="enrolled-title">
     <h2 id="enrolled-title">Enrolled courses</h2>
@@ -76,14 +129,17 @@ const addedCourse = enrolled.find((c) => c.code === added);
                   <span>Units</span>
                   {course.units}
                 </p>
-                <ul class="schedule-list" aria-label={`${course.code} schedule`}>
-                  {scheduleItems(course.schedule).map((s) => (
-                    <li>
-                      <strong>{s.kind}</strong> · {s.when}
-                      {s.where && <span> · {s.where}</span>}
-                    </li>
-                  ))}
-                </ul>
+                <ScheduleList schedule={course.schedule} label={`${course.code} schedule`} />
+                {changeable && (
+                  <div class="row-actions">
+                    <a class="button small" href={`/sessions/${session.code}/courses/${course.code}/switch/`}>
+                      Switch<span class="visually-hidden"> {course.code}</span>
+                    </a>
+                    <a class="button small quiet" href={`/sessions/${session.code}/courses/${course.code}/drop/`}>
+                      Drop<span class="visually-hidden"> {course.code}</span>
+                    </a>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

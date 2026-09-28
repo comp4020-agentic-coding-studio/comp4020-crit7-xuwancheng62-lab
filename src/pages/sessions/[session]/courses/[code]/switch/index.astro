@@ -1,0 +1,116 @@
+---
+import Crumbs from "../../../../../../components/Crumbs.astro";
+import Base from "../../../../../../layouts/Base.astro";
+import { getSession, listEnrolments, listRecommended, type Offering, searchSubjects, statusOf } from "../../../../../../lib/db";
+import { totalUnits } from "../../../../../../lib/format";
+import { isRecommended } from "../../../../../../lib/programs";
+
+const student = Astro.locals.student!;
+const session = getSession(Astro.params.session ?? "");
+if (!session) return new Response("Session not found", { status: 404 });
+
+const code = Astro.params.code ?? "";
+const base = `/sessions/${session.code}`;
+const enrolled = listEnrolments(session.code, student.id);
+const from = enrolled.find((c) => c.code === code);
+const closed = statusOf(session) === "Past";
+const q = (Astro.url.searchParams.get("q") ?? "").trim();
+
+// Only courses this student could switch into: their own variant, offered
+// this session, and not one they already take.
+const takenCodes = new Set(enrolled.map((c) => c.code));
+const results = q ? searchSubjects(session.code, q, student) : [];
+const options: Offering[] = q
+  ? results.flatMap((r) => (r.eligible && !takenCodes.has(r.eligible.code) ? [r.eligible] : []))
+  : listRecommended(session.code, student).filter((o) => !takenCodes.has(o.code));
+const hiddenIneligible = q ? results.filter((r) => !r.eligible).length : 0;
+const loadAfter = (o: Offering) => totalUnits(enrolled) - (from?.units ?? 0) + o.units;
+---
+
+<Base title={`Switch ${code}`}>
+  <Crumbs items={[{ label: "Enrolment", href: "/" }, { label: session.name, href: `${base}/` }, { label: `Switch ${code}` }]} />
+
+  <header class="page-head">
+    <p class="eyebrow">{session.name}</p>
+    <h1>Switch {code}</h1>
+    {
+      from && !closed && (
+        <p class="lede">
+          Choose a course to take instead of <strong>{from.code} {from.name}</strong>. You keep {from.code} until you
+          confirm the switch.
+        </p>
+      )
+    }
+  </header>
+
+  {
+    closed ? (
+      <p class="notice-limit" role="status">
+        {session.name} has ended, so its enrolments can't be changed. <a href={`${base}/`}>Back to {session.name}</a>
+      </p>
+    ) : !from ? (
+      <p class="notice-limit" role="status">
+        You're not enrolled in {code} in {session.name}. <a href={`${base}/`}>Back to {session.name}</a>
+      </p>
+    ) : (
+      <>
+        <form class="search search-hero" method="get" action={`${base}/courses/${from.code}/switch/`}>
+          <label for="q">Find a replacement course</label>
+          <div class="search-row">
+            <input id="q" name="q" type="search" value={q} placeholder="Course name, code or topic" required />
+            <button class="button primary large">Search</button>
+          </div>
+          <p class="hint">Only courses at your study level that you're not already taking are shown.</p>
+        </form>
+
+        <h2 class="results-head">
+          {q
+            ? `${options.length} ${options.length === 1 ? "option" : "options"} for “${q}”`
+            : "Recommended for your program"}
+        </h2>
+        {options.length === 0 && (
+          <p class="empty">
+            {q
+              ? `No courses you could switch to match “${q}” in ${session.name}.`
+              : "No other recommended courses this session. Search for a course above."}
+            {hiddenIneligible > 0 &&
+              ` ${hiddenIneligible} matching ${hiddenIneligible === 1 ? "course isn't" : "courses aren't"} available at your study level.`}
+          </p>
+        )}
+        {options.length > 0 && (
+          <ul class="results">
+            {options.map((o) => (
+              <li class="result">
+                <div>
+                  <p class="code-line">
+                    <span class="code">{o.code}</span>
+                    {isRecommended(student.program, o.groupId) && (
+                      <span class="rec-tag">Recommended for your program</span>
+                    )}
+                  </p>
+                  <h3>
+                    <a href={`${base}/courses/${o.code}/`}>{o.name}</a>
+                  </h3>
+                  <p class="meta">
+                    {o.units} units<span class="meta-sep" aria-hidden="true">·</span>
+                    {o.teachingMode}<span class="meta-sep" aria-hidden="true">·</span>
+                    {loadAfter(o)} units after switching
+                  </p>
+                  <p class="result-summary">{o.summary}</p>
+                </div>
+                <div class="result-action">
+                  <a class="button primary" href={`${base}/courses/${from.code}/switch/${o.code}/`}>
+                    Choose<span class="visually-hidden"> {o.code} to replace {from.code}</span>
+                  </a>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p class="hint">
+          <a href={`${base}/`}>Cancel and keep {from.code}</a>
+        </p>
+      </>
+    )
+  }
+</Base>

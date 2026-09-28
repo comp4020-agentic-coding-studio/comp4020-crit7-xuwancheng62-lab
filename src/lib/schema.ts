@@ -53,7 +53,19 @@ export const classes = sqliteTable("classes", {
   schedule: text().notNull(),
 });
 
-// studentId is a demo profile id from src/lib/student.ts, not a table.
+// Created on first sign-in; career and program stay null until the student
+// sets up their profile. program is an id from src/lib/programs.ts.
+export const students = sqliteTable("students", {
+  id: text().primaryKey(),
+  career: text().$type<Career>(),
+  program: text(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+// studentId holds a students.id. Not a foreign key: rows from the earlier
+// fixed demo profiles ("pg-demo", "ug-demo") have no student row.
 export const enrolments = sqliteTable(
   "enrolments",
   {

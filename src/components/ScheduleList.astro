@@ -1,0 +1,25 @@
+---
+import { scheduleItems } from "../lib/format";
+
+interface Props {
+  schedule: string;
+  label?: string;
+}
+const { schedule, label } = Astro.props;
+const items = scheduleItems(schedule);
+---
+
+{
+  items.length > 0 ? (
+    <ul class="schedule-list" aria-label={label}>
+      {items.map((s) => (
+        <li>
+          <strong>{s.kind}</strong> · {s.when}
+          {s.where && <span> · {s.where}</span>}
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <p class="schedule-pending">Timetable not published yet. ANU releases class times in MyTimetable.</p>
+  )
+}

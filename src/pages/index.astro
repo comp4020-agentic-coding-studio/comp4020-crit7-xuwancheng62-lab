@@ -1,7 +1,8 @@
 ---
 import Base from "../layouts/Base.astro";
-import { featuredSession, listEnrolments, listSessions, statusOf } from "../lib/db";
+import { featuredSession, listEnrolments, listSessions, MAX_COURSES_PER_SESSION, statusOf } from "../lib/db";
 import { formatDate, totalUnits } from "../lib/format";
+import { findProgram } from "../lib/programs";
 
 const student = Astro.locals.student!;
 const all = listSessions();
@@ -9,15 +10,15 @@ const featured = featuredSession(all);
 const others = all.filter((s) => s.code !== featured?.code);
 const featuredStatus = featured && statusOf(featured);
 const featuredEnrolled = featured ? listEnrolments(featured.code, student.id) : [];
-const firstName = student.name.split(" ")[0];
+const program = findProgram(student.program)!;
 ---
 
 <Base title="Home">
   <header class="page-head">
-    <h1>Welcome, {firstName}</h1>
+    <h1>Welcome back</h1>
     <p class="lede">
-      Pick a semester to manage your courses. Search for the subject you want to study; we'll show the version for
-      your program.
+      You're studying the {program.name}. Pick a semester to manage your courses; we'll show the version of each
+      course for your study level and point out the ones recommended for your program.
     </p>
   </header>
 
@@ -39,7 +40,9 @@ const firstName = student.name.split(" ")[0];
             </div>
             <div>
               <dt>Courses</dt>
-              <dd>{featuredEnrolled.length}</dd>
+              <dd>
+                {featuredEnrolled.length} <small>of {MAX_COURSES_PER_SESSION}</small>
+              </dd>
             </div>
           </dl>
         </div>

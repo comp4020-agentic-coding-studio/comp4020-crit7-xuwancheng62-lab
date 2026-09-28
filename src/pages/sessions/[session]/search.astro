@@ -1,7 +1,7 @@
 ---
 import Crumbs from "../../../components/Crumbs.astro";
 import Base from "../../../layouts/Base.astro";
-import { getSession, searchSubjects } from "../../../lib/db";
+import { getSession, listEnrolments, MAX_COURSES_PER_SESSION, searchSubjects } from "../../../lib/db";
 
 const session = getSession(Astro.params.session ?? "");
 if (!session) return new Response("Session not found", { status: 404 });
@@ -10,6 +10,7 @@ const student = Astro.locals.student!;
 const q = (Astro.url.searchParams.get("q") ?? "").trim();
 const results = searchSubjects(session.code, q, student);
 const base = `/sessions/${session.code}`;
+const atLimit = listEnrolments(session.code, student.id).length >= MAX_COURSES_PER_SESSION;
 ---
 
 <Base title={q ? `Search: ${q}` : "Course search"}>
@@ -31,6 +32,15 @@ const base = `/sessions/${session.code}`;
   </form>
 
   {
+    atLimit && (
+      <p class="notice-limit search-limit">
+        You're enrolled in {MAX_COURSES_PER_SESSION} courses in {session.name}, the most allowed. You can browse course
+        details, but you can't add another course this session.
+      </p>
+    )
+  }
+
+  {
     q && (
       <h2 class="results-head">
         {results.length} {results.length === 1 ? "result" : "results"} for “{q}” in {session.name}
@@ -46,12 +56,15 @@ const base = `/sessions/${session.code}`;
   {
     results.length > 0 && (
       <ul class="results">
-        {results.map(({ eligible, ineligible }) => (
+        {results.map(({ eligible, ineligible, recommended }) => (
           <>
             {eligible && (
               <li class="result">
                 <div>
-                  <p class="code">{eligible.code}</p>
+                  <p class="code-line">
+                    <span class="code">{eligible.code}</span>
+                    {recommended && <span class="rec-tag">Recommended for your program</span>}
+                  </p>
                   <h3>
                     <a href={`${base}/courses/${eligible.code}/`}>{eligible.name}</a>
                   </h3>
@@ -61,12 +74,12 @@ const base = `/sessions/${session.code}`;
                     {eligible.career}
                   </p>
                   <p class="result-summary">{eligible.summary}</p>
-                  <p class="ok">✓ Available for your program</p>
+                  <p class="ok">✓ Available at your study level</p>
                 </div>
                 <div class="result-action">
-                  {eligible.enrolled ? (
+                  {eligible.enrolled || atLimit ? (
                     <>
-                      <span class="enrolled-tag">Enrolled</span>
+                      {eligible.enrolled && <span class="enrolled-tag">Enrolled</span>}
                       <a class="button quiet" href={`${base}/courses/${eligible.code}/`}>
                         View details<span class="visually-hidden"> for {eligible.code}</span>
                       </a>

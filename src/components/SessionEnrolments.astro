@@ -1,0 +1,37 @@
+---
+import type { SessionStatus } from "../lib/db";
+import { formatDate, totalUnits } from "../lib/format";
+import type { Course, Session } from "../lib/schema";
+
+interface Props {
+  session: Session;
+  status: SessionStatus;
+  courses: Pick<Course, "code" | "name" | "units">[];
+}
+const { session, status, courses } = Astro.props;
+const linkable = status !== "Past";
+---
+
+<article class="history-block">
+  <header class="history-head">
+    <div>
+      <span class:list={["badge", `badge-${status.toLowerCase()}`]}>{status}</span>
+      <h3>
+        {linkable ? <a href={`/sessions/${session.code}/`}>{session.name}</a> : session.name}
+      </h3>
+      <p class="meta">{formatDate(session.startDate)} – {formatDate(session.endDate)}</p>
+    </div>
+    <p class="history-units"><strong>{totalUnits(courses)}</strong> units</p>
+  </header>
+  <ul class="history-courses">
+    {
+      courses.map((c) => (
+        <li>
+          <span class="code">{c.code}</span>
+          <span class="history-name">{c.name}</span>
+          <span class="history-course-units">{c.units} units</span>
+        </li>
+      ))
+    }
+  </ul>
+</article>

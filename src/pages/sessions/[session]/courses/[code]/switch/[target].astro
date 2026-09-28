@@ -1,0 +1,124 @@
+---
+import Crumbs from "../../../../../../components/Crumbs.astro";
+import ScheduleList from "../../../../../../components/ScheduleList.astro";
+import Base from "../../../../../../layouts/Base.astro";
+import { getCourseView, getSession, listEnrolments, MAX_COURSES_PER_SESSION, statusOf } from "../../../../../../lib/db";
+import { totalUnits } from "../../../../../../lib/format";
+import { isRecommended } from "../../../../../../lib/programs";
+
+const student = Astro.locals.student!;
+const session = getSession(Astro.params.session ?? "");
+if (!session) return new Response("Session not found", { status: 404 });
+
+const code = Astro.params.code ?? "";
+const target = Astro.params.target ?? "";
+const base = `/sessions/${session.code}`;
+const enrolled = listEnrolments(session.code, student.id);
+const from = enrolled.find((c) => c.code === code);
+const view = getCourseView(session.code, target, student);
+const to = view?.offering;
+const before = totalUnits(enrolled);
+const after = before - (from?.units ?? 0) + (to?.units ?? 0);
+
+const problem =
+  statusOf(session) === "Past"
+    ? `${session.name} has ended, so its enrolments can't be changed.`
+    : !from
+      ? `You're not enrolled in ${code} in ${session.name}.`
+      : !to
+        ? `${target} isn't offered in ${session.name}.`
+        : to.code === from.code
+          ? "Choose a different course to switch to."
+          : !view.eligible
+            ? `${to.code} isn't available at your study level.${view.alternative ? ` Your program uses ${view.alternative.code}.` : ""}`
+            : to.enrolled
+              ? `You're already enrolled in ${to.code}.`
+              : null;
+
+const sides = from && to ? ([["You'll drop", from, "is-drop"], ["You'll add", to, "is-add"]] as const) : [];
+---
+
+<Base title={`Switch ${code} for ${target}`}>
+  <Crumbs
+    items={[
+      { label: "Enrolment", href: "/" },
+      { label: session.name, href: `${base}/` },
+      { label: `Switch ${code}`, href: `${base}/courses/${code}/switch/` },
+      { label: target },
+    ]}
+  />
+
+  <h1>Confirm switch</h1>
+
+  {
+    problem ? (
+      <>
+        <p class="notice-limit" role="status">
+          {problem}
+        </p>
+        <div class="actions">
+          {from && (
+            <a class="button primary" href={`${base}/courses/${from.code}/switch/`}>
+              Choose another course
+            </a>
+          )}
+          <a class="button quiet" href={`${base}/`}>
+            Back to {session.name}
+          </a>
+        </div>
+      </>
+    ) : (
+      <>
+        <p class="lede">
+          Compare the two courses, then confirm. Both changes happen together: if the new course can't be added, you
+          keep {from!.code}.
+        </p>
+
+        <div class="compare">
+          {sides.map(([heading, c, tone]) => (
+            <section class:list={["compare-card", tone]} aria-labelledby={`${tone}-title`}>
+              <p class="compare-label">{heading}</p>
+              <p class="code-line">
+                <span class="code">{c.code}</span>
+                {tone === "is-add" && isRecommended(student.program, c.groupId) && (
+                  <span class="rec-tag">Recommended for your program</span>
+                )}
+              </p>
+              <h2 id={`${tone}-title`}>{c.name}</h2>
+              <dl class="key-facts">
+                <div><dt>Units</dt><dd>{c.units}</dd></div>
+                <div><dt>Teaching mode</dt><dd>{c.teachingMode}</dd></div>
+              </dl>
+              <h3 class="compare-sub">Schedule</h3>
+              <ScheduleList schedule={c.schedule} />
+            </section>
+          ))}
+        </div>
+
+        <dl class="summary compare-summary">
+          <dt>Your load</dt>
+          <dd class="load">
+            {before} → <strong>{after}</strong> units in {session.name}
+          </dd>
+          <dt>Courses</dt>
+          <dd>
+            {enrolled.length} of {MAX_COURSES_PER_SESSION}, unchanged
+          </dd>
+        </dl>
+
+        <form method="post" action="/api/switch" class="actions">
+          <input type="hidden" name="session" value={session.code} />
+          <input type="hidden" name="from" value={from!.code} />
+          <input type="hidden" name="to" value={to!.code} />
+          <button class="button primary large">Confirm switch</button>
+          <a class="button large" href={`${base}/courses/${from!.code}/switch/`}>
+            Choose a different course
+          </a>
+          <a class="button quiet large" href={`${base}/`}>
+            Cancel
+          </a>
+        </form>
+      </>
+    )
+  }
+</Base>

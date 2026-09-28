@@ -29,6 +29,13 @@
       "when": 1790581657866,
       "tag": "0003_per_student_enrolments",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1790582796701,
+      "tag": "0004_students",
+      "breakpoints": true
     }
   ]
 }

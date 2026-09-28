@@ -3,6 +3,8 @@
 export const ROUTES = [
   "/",
   "/sign-in/",
+  "/profile/",
+  "/profile/edit/",
   "/readme/",
   "/sessions/2026-S2/",
   "/sessions/2026-S2/search/",
@@ -11,4 +13,9 @@ export const ROUTES = [
   "/sessions/2026-S2/courses/COMP8020/",
   "/sessions/2026-S2/courses/COMP4020/",
   "/sessions/2026-S2/courses/COMP8020/confirm/",
+  "/sessions/2026-S2/courses/COMP2310/",
+  "/sessions/2026-S2/courses/COMP8020/drop/",
+  "/sessions/2026-S2/courses/COMP8020/switch/",
+  "/sessions/2026-S2/courses/COMP8020/switch/?q=software",
+  "/sessions/2026-S2/courses/COMP8020/switch/COMP6442/",
 ];

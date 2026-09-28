@@ -1,7 +1,7 @@
 import axe from "axe-core";
 import { JSDOM } from "jsdom";
 import { beforeAll, describe, expect, inject, it } from "vitest";
-import { POSTGRAD } from "./auth";
+import { POSTGRAD, signUpPostgrad } from "./auth";
 import { ROUTES } from "./routes";
 
 // The invariants run against the RUNNING app — spec/global-setup.ts boots the
@@ -14,6 +14,10 @@ import { ROUTES } from "./routes";
 // file. The routes they cover come from spec/routes.ts; keep it current.
 const baseUrl = inject("baseUrl");
 
+// A signed-in student with a complete profile, so the real pages are checked
+// rather than the sign-in or profile-setup redirects.
+beforeAll(() => signUpPostgrad(baseUrl));
+
 for (const route of ROUTES) {
   describe(`invariants: ${route}`, () => {
     let status: number;
@@ -21,7 +25,6 @@ for (const route of ROUTES) {
     let doc: Document;
 
     beforeAll(async () => {
-      // Signed in, so the real pages are checked rather than the sign-in redirect.
       const res = await fetch(new URL(route, baseUrl), { headers: { cookie: POSTGRAD } });
       status = res.status;
       dom = new JSDOM(await res.text(), {

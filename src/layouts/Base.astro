@@ -1,14 +1,21 @@
 ---
-import { initials } from "../lib/student";
+import { findProgram } from "../lib/programs";
 import "../styles.css";
 
 interface Props {
   title: string;
 }
 const { title } = Astro.props;
-const student = Astro.locals.student;
+const { student, studentId } = Astro.locals;
+const program = student && findProgram(student.program);
 const path = Astro.url.pathname;
-const section = path.startsWith("/readme") ? "about" : path.startsWith("/sign-in") ? "sign-in" : "enrolment";
+const section = path.startsWith("/readme")
+  ? "about"
+  : path.startsWith("/sign-in")
+    ? "sign-in"
+    : path.startsWith("/profile")
+      ? "profile"
+      : "enrolment";
 ---
 
 <!doctype html>
@@ -29,6 +36,7 @@ const section = path.startsWith("/readme") ? "about" : path.startsWith("/sign-in
         <nav class="site-nav" aria-label="Site">
           <ul>
             <li><a href="/" aria-current={section === "enrolment" ? "page" : undefined}>Enrolment</a></li>
+            {studentId && <li><a href="/profile/" aria-current={section === "profile" ? "page" : undefined}>Profile</a></li>}
             <li><a href="/readme/" aria-current={section === "about" ? "page" : undefined}>About</a></li>
           </ul>
         </nav>
@@ -36,20 +44,19 @@ const section = path.startsWith("/readme") ? "about" : path.startsWith("/sign-in
       <div class="identity-bar">
         <div class="wrap identity-inner">
           {
-            student ? (
+            studentId ? (
               <>
                 <div class="identity">
-                  <span class="avatar" aria-hidden="true">{initials(student.name)}</span>
                   <p class="identity-text">
-                    <span class="visually-hidden">Signed in as </span>
-                    <strong>{student.name}</strong>
-                    <span class="identity-program">{student.program}</span>
+                    <span class="identity-label">Student ID</span>
+                    <strong class="identity-id">{studentId}</strong>
+                    {program && <span class="identity-program">{program.name}</span>}
                   </p>
-                  <span class="career-pill">{student.career}</span>
+                  {student && <span class="career-pill">{student.career}</span>}
                 </div>
                 <form method="post" action="/api/session">
                   <input type="hidden" name="action" value="sign-out" />
-                  <button class="identity-switch">Switch student</button>
+                  <button class="identity-switch">Sign out</button>
                 </form>
               </>
             ) : (

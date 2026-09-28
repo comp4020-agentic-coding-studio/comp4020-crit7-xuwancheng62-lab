@@ -1,0 +1,104 @@
+---
+import Base from "../../layouts/Base.astro";
+import { getStudent } from "../../lib/db";
+import { PROGRAMS } from "../../lib/programs";
+
+const record = getStudent(Astro.locals.studentId!)!;
+const setup = !Astro.locals.student;
+const ERRORS: Record<string, string> = {
+  career: "Choose your study level.",
+  program: "Choose your program.",
+  mismatch: "That program doesn't match the study level you chose. Pick a program from the matching list.",
+};
+const error = ERRORS[Astro.url.searchParams.get("error") ?? ""];
+const levels = ["Undergraduate", "Postgraduate"] as const;
+---
+
+<Base title={setup ? "Set up your profile" : "Edit profile"}>
+  <div class="narrow">
+    <header class="page-head">
+      <p class="eyebrow">Student ID {record.id}</p>
+      <h1>{setup ? "Set up your profile" : "Edit profile"}</h1>
+      <p class="lede">
+        Your study level decides which version of a course you can take, and your program decides which courses we
+        recommend.
+      </p>
+    </header>
+
+    {
+      error && (
+        <p class="notice-error" role="alert">
+          {error}
+        </p>
+      )
+    }
+
+    <form class="form-card" method="post" action="/api/profile" id="profile-form">
+      <fieldset class="field">
+        <legend>Study level</legend>
+        <div class="choice-row">
+          {
+            levels.map((level) => (
+              <label class="choice">
+                <input type="radio" name="career" value={level} required checked={record.career === level} />
+                <span>{level}</span>
+              </label>
+            ))
+          }
+        </div>
+      </fieldset>
+
+      <div class="field">
+        <label for="program">Program</label>
+        <p class="field-hint" id="program-hint">Only programs at your study level can be chosen.</p>
+        <select id="program" name="program" required aria-describedby="program-hint">
+          <option value="">Choose a program</option>
+          {
+            levels.map((level) => (
+              <optgroup label={`${level} programs`} data-career={level}>
+                {PROGRAMS.filter((p) => p.career === level).map((p) => (
+                  <option value={p.id} selected={record.program === p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </optgroup>
+            ))
+          }
+        </select>
+      </div>
+
+      {
+        !setup && (
+          <p class="field-hint">Changing your profile doesn't change courses you're already enrolled in.</p>
+        )
+      }
+
+      <div class="actions">
+        <button class="button primary large">{setup ? "Save and continue" : "Save profile"}</button>
+        {!setup && <a class="button quiet large" href="/profile/">Cancel</a>}
+      </div>
+    </form>
+  </div>
+</Base>
+
+<script>
+  // Progressive enhancement: once a study level is picked, only its programs
+  // stay selectable. The server checks the pairing either way.
+  const form = document.getElementById("profile-form") as HTMLFormElement;
+  const select = form.querySelector<HTMLSelectElement>("#program")!;
+  const sync = () => {
+    const career = form.querySelector<HTMLInputElement>('input[name="career"]:checked')?.value;
+    for (const group of select.querySelectorAll<HTMLOptGroupElement>("optgroup")) {
+      const off = Boolean(career) && group.dataset.career !== career;
+      group.disabled = off;
+      group.hidden = off;
+    }
+    if (select.selectedOptions[0]?.parentElement instanceof HTMLOptGroupElement && select.selectedOptions[0].parentElement.disabled) {
+      select.value = "";
+    }
+  };
+  form.addEventListener("change", (event) => {
+    if ((event.target as HTMLInputElement).name === "career") sync();
+  });
+  sync();
+</script>
