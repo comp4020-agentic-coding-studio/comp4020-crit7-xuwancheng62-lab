@@ -15,7 +15,9 @@ const section = path.startsWith("/readme")
     ? "sign-in"
     : path.startsWith("/profile")
       ? "profile"
-      : "enrolment";
+      : path.startsWith("/courses")
+        ? "courses"
+        : "enrolment";
 ---
 
 <!doctype html>
@@ -36,6 +38,7 @@ const section = path.startsWith("/readme")
         <nav class="site-nav" aria-label="Site">
           <ul>
             <li><a href="/" aria-current={section === "enrolment" ? "page" : undefined}>Enrolment</a></li>
+            {studentId && <li><a href="/courses/" aria-current={section === "courses" ? "page" : undefined}>Courses</a></li>}
             {studentId && <li><a href="/profile/" aria-current={section === "profile" ? "page" : undefined}>Profile</a></li>}
             <li><a href="/readme/" aria-current={section === "about" ? "page" : undefined}>About</a></li>
           </ul>

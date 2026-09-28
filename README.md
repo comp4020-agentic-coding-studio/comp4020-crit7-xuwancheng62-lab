@@ -16,8 +16,8 @@ profile.**
 ## The flow
 
 Sign in with a Student ID → (first time) set study level and program →
-choose semester → search by name, code or topic → course details → Add →
-confirm → enrolled.
+choose semester → search by name, code or topic (or browse the Courses
+catalogue) → course details → Add → confirm → enrolled.
 
 - **A Student ID is enough to sign in.** The sign-in is simulated: any ID in
   the ANU shape (u and seven digits) works, and a cookie remembers it. The
@@ -41,6 +41,13 @@ confirm → enrolled.
 - **Search by what you know.** A search matches course names, codes and
   descriptions. Results carry units, teaching mode and a summary, so they
   help you decide.
+- **Browse without a search term.** Courses, in the main navigation, lists
+  every course offered in the chosen session. It starts with the courses the
+  student's study level can take, recommended ones first and tagged; an "All
+  courses" toggle shows every study level, with ineligible courses marked. A
+  keyword box (code, title or description) and filters for study level,
+  subject, course level and teaching mode narrow the list. Browse and search
+  share one catalogue query, so they can't disagree about what matches.
 - **Details before enrolling.** A search result leads to the course details
   (description, prerequisites, schedule, assessment) and never straight to
   enrolment. Having to leave ISIS to understand a course is the round trip
@@ -80,6 +87,9 @@ administrative, and can see why when a course isn't for them.
   - Drop confirms, shows the new total and persists; Switch replaces a course
     in one transaction and leaves the original in place whenever the add
     fails (ineligible, not offered, already taken)
+  - the Courses page defaults to the student's study level, marks
+    recommended courses, can show every course, filters and searches, links
+    each course to its details, and never shows a class number
   - the catalogue importer parses course pages into the stored shape, and
     imported courses are searchable like the rest
   - the server refuses the ineligible variant and saves nothing

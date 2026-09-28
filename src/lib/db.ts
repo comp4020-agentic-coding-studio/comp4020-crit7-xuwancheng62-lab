@@ -106,6 +106,85 @@ function offerings(sessionCode: string, studentId: string): Offering[] {
     .map(({ enrolmentId, ...rest }) => ({ ...rest, enrolled: enrolmentId !== null }));
 }
 
+// Catalogue facets derived from the course code: "COMP6442" is subject COMP,
+// course level 6000.
+export const subjectOf = (code: string) => code.match(/^[A-Z]+/)?.[0] ?? code;
+export const levelOf = (code: string) => Number(code.match(/\d/)?.[0] ?? 0) * 1000;
+
+// An offering as the catalogue sees it for one student.
+export type CatalogueEntry = Offering & { subject: string; level: number; eligible: boolean; recommended: boolean };
+
+function catalogueEntries(sessionCode: string, student: Student): CatalogueEntry[] {
+  return offerings(sessionCode, student.id).map((o) => ({
+    ...o,
+    subject: subjectOf(o.code),
+    level: levelOf(o.code),
+    eligible: o.career === student.career,
+    recommended: isRecommended(student.program, o.groupId),
+  }));
+}
+
+// The one definition of "matches a search", for both search and browse: code
+// (spaces ignored, so "comp 6442" works), title, description or subject name.
+function matchesQuery(o: Offering, q: string) {
+  if (!q) return true;
+  const compact = q.replace(/\s+/g, "");
+  return (
+    [o.code, o.name, o.description, o.groupName].some((field) => field.toLowerCase().includes(q)) ||
+    o.code.toLowerCase().includes(compact)
+  );
+}
+
+export type CatalogueFilters = {
+  q?: string;
+  // "mine": only courses the student's study level can take (the default)
+  scope?: "mine" | "all";
+  career?: Career;
+  subject?: string;
+  level?: number;
+  mode?: string;
+  recommendedOnly?: boolean;
+};
+
+export type CatalogueFacets = { subjects: string[]; levels: number[]; modes: string[] };
+
+export type Catalogue = { entries: CatalogueEntry[]; total: number; facets: CatalogueFacets };
+
+// Browse the courses offered in a session. Facets come from the whole
+// session so filter options don't vanish as filters narrow the list.
+// Recommended and eligible courses sort first, then by code.
+export function browseCatalogue(sessionCode: string, student: Student, filters: CatalogueFilters = {}): Catalogue {
+  const all = catalogueEntries(sessionCode, student);
+  const q = (filters.q ?? "").trim().toLowerCase();
+  const scoped = filters.scope === "all" ? all : all.filter((e) => e.eligible);
+  const entries = scoped
+    .filter(
+      (e) =>
+        matchesQuery(e, q) &&
+        (filters.scope !== "all" || !filters.career || e.career === filters.career) &&
+        (!filters.subject || e.subject === filters.subject) &&
+        (!filters.level || e.level === filters.level) &&
+        (!filters.mode || e.teachingMode === filters.mode) &&
+        (!filters.recommendedOnly || e.recommended),
+    )
+    .sort(
+      (a, b) =>
+        Number(!a.eligible) - Number(!b.eligible) ||
+        Number(!a.recommended) - Number(!b.recommended) ||
+        a.code.localeCompare(b.code),
+    );
+  const distinct = <T>(values: T[]) => [...new Set(values)];
+  return {
+    entries,
+    total: scoped.length,
+    facets: {
+      subjects: distinct(all.map((e) => e.subject)).sort(),
+      levels: distinct(all.map((e) => e.level)).sort((a, b) => a - b),
+      modes: distinct(all.map((e) => e.teachingMode)).sort(),
+    },
+  };
+}
+
 export type SubjectResult = {
   groupName: string;
   eligible: Offering | null;
@@ -116,23 +195,20 @@ export type SubjectResult = {
 
 // The student searches for a subject; the system picks the variant their
 // career can take. An ineligible variant is only surfaced when the student
-// named its code, or when there's no eligible variant at all.
+// named its code, or when there's no eligible variant at all. Built on the
+// same catalogue as browsing, grouped by subject.
 export function searchSubjects(sessionCode: string, query: string, student: Student): SubjectResult[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
-  const { career } = student;
-  const all = offerings(sessionCode, student.id);
+  const all = catalogueEntries(sessionCode, student);
+  const matches = browseCatalogue(sessionCode, student, { q, scope: "all" }).entries;
   const compact = q.replace(/\s+/g, "");
-  const matches = all.filter((o) =>
-    [o.code, o.name, o.description, o.groupName].some((field) => field.toLowerCase().includes(q)) ||
-    o.code.toLowerCase().includes(compact),
-  );
 
   const results: SubjectResult[] = [];
   for (const groupId of new Set(matches.map((m) => m.groupId))) {
     const variants = all.filter((o) => o.groupId === groupId);
-    const eligible = variants.find((o) => o.career === career) ?? null;
-    const matchedHere = matches.filter((m) => m.groupId === groupId && m.career !== career);
+    const eligible = variants.find((o) => o.eligible) ?? null;
+    const matchedHere = matches.filter((m) => m.groupId === groupId && !m.eligible);
     const ineligible = eligible
       ? (matchedHere.find((m) => compact.includes(m.code.toLowerCase())) ?? null)
       : (matchedHere[0] ?? null);
@@ -140,7 +216,7 @@ export function searchSubjects(sessionCode: string, query: string, student: Stud
       groupName: variants[0].groupName,
       eligible,
       ineligible,
-      recommended: isRecommended(student.program, groupId),
+      recommended: variants[0].recommended,
     });
   }
   return results.sort(

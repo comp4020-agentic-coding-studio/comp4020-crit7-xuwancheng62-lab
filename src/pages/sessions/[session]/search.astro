@@ -28,7 +28,10 @@ const atLimit = listEnrolments(session.code, student.id).length >= MAX_COURSES_P
       <input id="q" name="q" type="search" value={q} placeholder="e.g. algorithms" required />
       <button class="button primary large">Search</button>
     </div>
-    <p class="hint">Try “programming”, “data” or a code like COMP6442.</p>
+    <p class="hint">
+      Try “programming”, “data” or a code like COMP6442. Not sure what to look for?
+      <a href={`/courses/?session=${session.code}`}>Browse the course catalogue</a>.
+    </p>
   </form>
 
   {

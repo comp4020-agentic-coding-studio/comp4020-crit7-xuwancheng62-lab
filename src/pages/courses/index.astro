@@ -1,0 +1,201 @@
+---
+import Base from "../../layouts/Base.astro";
+import { browseCatalogue, type CatalogueFilters, featuredSession, getSession, listSessions } from "../../lib/db";
+import { findProgram } from "../../lib/programs";
+import type { Career } from "../../lib/schema";
+
+const student = Astro.locals.student!;
+const program = findProgram(student.program)!;
+const params = Astro.url.searchParams;
+const sessions = listSessions();
+const session = getSession(params.get("session") ?? "") ?? featuredSession(sessions) ?? sessions[0];
+
+const CAREERS: Career[] = ["Undergraduate", "Postgraduate"];
+const scope = params.get("scope") === "all" ? "all" : "mine";
+const filters: CatalogueFilters = {
+  q: (params.get("q") ?? "").trim(),
+  scope,
+  career: CAREERS.find((c) => c === params.get("career")),
+  subject: params.get("subject") || undefined,
+  level: Number(params.get("level")) || undefined,
+  mode: params.get("mode") || undefined,
+  recommendedOnly: params.get("rec") === "1",
+};
+const catalogue = session && browseCatalogue(session.code, student, filters);
+const filtered = Boolean(
+  filters.q || filters.career || filters.subject || filters.level || filters.mode || filters.recommendedOnly,
+);
+
+// The scope toggle keeps every other choice; switching to "mine" drops the
+// study level filter, which only applies to all courses.
+const scopeHref = (to: "mine" | "all") => {
+  const next = new URLSearchParams(params);
+  if (to === "all") next.set("scope", "all");
+  else {
+    next.delete("scope");
+    next.delete("career");
+  }
+  if (session) next.set("session", session.code);
+  return `/courses/?${next}`;
+};
+const detail = (code: string) => `/sessions/${session!.code}/courses/${code}/`;
+---
+
+<Base title={filters.q ? `Courses: ${filters.q}` : "Course catalogue"}>
+  <header class="page-head">
+    {session && <p class="eyebrow">{session.name}</p>}
+    <h1>Course catalogue</h1>
+    <p class="lede">
+      Browse every course offered this session. We start with the courses you can take as a
+      {student.career.toLowerCase()} student, with the ones recommended for the {program.name} first.
+    </p>
+  </header>
+
+  {
+    !session || !catalogue ? (
+      <p class="empty">No sessions are open for enrolment yet.</p>
+    ) : (
+      <>
+        <nav class="scope-toggle" aria-label="Which courses to show">
+          <a href={scopeHref("mine")} aria-current={scope === "mine" ? "page" : undefined}>
+            Courses for me <span class="scope-note">{student.career}</span>
+          </a>
+          <a href={scopeHref("all")} aria-current={scope === "all" ? "page" : undefined}>
+            All courses <span class="scope-note">every study level</span>
+          </a>
+        </nav>
+
+        <form class="catalogue-filters" method="get" action="/courses/">
+          {scope === "all" && <input type="hidden" name="scope" value="all" />}
+          <div class="filter-search search">
+            <label for="q">Search by code, title or keyword</label>
+            <input id="q" name="q" type="search" value={filters.q} placeholder="e.g. COMP6442, databases, security" />
+          </div>
+          <div class="filter-grid">
+            <div class="filter">
+              <label for="session">Session</label>
+              <select id="session" name="session">
+                {sessions.map((s) => (
+                  <option value={s.code} selected={s.code === session.code}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {scope === "all" && (
+              <div class="filter">
+                <label for="career">Study level</label>
+                <select id="career" name="career">
+                  <option value="">Any</option>
+                  {CAREERS.map((c) => (
+                    <option value={c} selected={filters.career === c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div class="filter">
+              <label for="subject">Subject</label>
+              <select id="subject" name="subject">
+                <option value="">Any</option>
+                {catalogue.facets.subjects.map((s) => (
+                  <option value={s} selected={filters.subject === s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div class="filter">
+              <label for="level">Course level</label>
+              <select id="level" name="level">
+                <option value="">Any</option>
+                {catalogue.facets.levels.map((l) => (
+                  <option value={l} selected={filters.level === l}>
+                    {l}-level
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div class="filter">
+              <label for="mode">Teaching mode</label>
+              <select id="mode" name="mode">
+                <option value="">Any</option>
+                {catalogue.facets.modes.map((m) => (
+                  <option value={m} selected={filters.mode === m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <label class="filter-check">
+            <input type="checkbox" name="rec" value="1" checked={filters.recommendedOnly} />
+            Only courses recommended for my program
+          </label>
+          <div class="actions">
+            <button class="button primary">Show courses</button>
+            {filtered && (
+              <a class="button quiet" href={`/courses/?session=${session.code}${scope === "all" ? "&scope=all" : ""}`}>
+                Clear filters
+              </a>
+            )}
+          </div>
+        </form>
+
+        <h2 class="results-head">
+          {catalogue.entries.length === catalogue.total
+            ? `${catalogue.total} ${catalogue.total === 1 ? "course" : "courses"}`
+            : `${catalogue.entries.length} of ${catalogue.total} courses`}{" "}
+          in {session.name}
+        </h2>
+
+        {catalogue.entries.length === 0 ? (
+          <p class="empty">
+            No courses match these filters.{" "}
+            {scope === "mine" ? (
+              <>
+                Try clearing a filter, or look at <a href={scopeHref("all")}>all courses</a>.
+              </>
+            ) : (
+              "Try clearing a filter or a broader keyword."
+            )}
+          </p>
+        ) : (
+          <ul class="results">
+            {catalogue.entries.map((c) => (
+              <li class:list={["result", { unavailable: !c.eligible }]}>
+                <div>
+                  <p class="code-line">
+                    <span class="code">{c.code}</span>
+                    {c.recommended && c.eligible && <span class="rec-tag">Recommended for your program</span>}
+                    {c.enrolled && <span class="enrolled-tag">Enrolled</span>}
+                  </p>
+                  <h3>
+                    <a href={detail(c.code)}>{c.name}</a>
+                  </h3>
+                  <p class="meta">
+                    {c.units} units<span class="meta-sep" aria-hidden="true">·</span>
+                    {c.teachingMode}<span class="meta-sep" aria-hidden="true">·</span>
+                    {c.career}
+                  </p>
+                  <p class="result-summary">{c.summary}</p>
+                  {c.eligible ? (
+                    <p class="ok">✓ Available at your study level</p>
+                  ) : (
+                    <p class="warn">Not available for your academic career ({c.career.toLowerCase()} offering).</p>
+                  )}
+                </div>
+                <div class="result-action">
+                  <a class="button quiet" href={detail(c.code)}>
+                    View details<span class="visually-hidden"> for {c.code}</span>
+                  </a>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </>
+    )
+  }
+</Base>
