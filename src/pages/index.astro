@@ -1,22 +1,29 @@
 ---
 import HeadDecor from "../components/HeadDecor.astro";
+import Landing from "../components/Landing.astro";
+import LiveEnrolments from "../components/LiveEnrolments.astro";
 import Base from "../layouts/Base.astro";
 import { featuredSession, listEnrolments, listSessions, MAX_COURSES_PER_SESSION, statusOf } from "../lib/db";
 import { formatDate, totalUnits } from "../lib/format";
 import { findProgram } from "../lib/programs";
 
-const student = Astro.locals.student!;
-const all = listSessions();
+// Signed-out visitors get the public landing page (middleware lets / through).
+const student = Astro.locals.student;
+const all = student ? listSessions() : [];
 const featured = featuredSession(all);
 const others = all.filter((s) => s.code !== featured?.code);
 const featuredStatus = featured && statusOf(featured);
-const featuredEnrolled = featured ? listEnrolments(featured.code, student.id) : [];
-const program = findProgram(student.program)!;
+const featuredEnrolled = student && featured ? listEnrolments(featured.code, student.id) : [];
+const program = student && findProgram(student.program)!;
 ---
+
+{!student && <Landing />}
+{student && program && (
 
 <Base title="Home">
   <header class="page-head">
     <HeadDecor variant="arcs" />
+    <LiveEnrolments />
     <h1>Welcome back</h1>
     <p class="lede">
       You're studying the {program.name}. Pick a semester to manage your courses; we'll show the version of each
@@ -84,3 +91,4 @@ const program = findProgram(student.program)!;
     )
   }
 </Base>
+)}

@@ -67,6 +67,12 @@ catalogue) → course details → Add → confirm → enrolled.
   transaction: if the new course can't be added, the student keeps the
   original. A switch doesn't change the course count, so it works at the
   four-course limit.
+- **Live across tabs.** When a student adds, drops or switches a course, their
+  other open pages (home, semester, course details, catalogue, profile)
+  refresh on their own, over a server-sent events stream at `/api/events`.
+  Only the student's own changes reach them.
+- **A public front door.** Signed out, `/` explains the prototype and offers
+  sign-in; every other page still asks you to sign in first.
 - **No Class Number, anywhere.** The class number is the database key for an
   offering. It is resolved on the server when you confirm and never shown or
   asked for.
@@ -90,6 +96,8 @@ administrative, and can see why when a course isn't for them.
   - the Courses page defaults to the student's study level, marks
     recommended courses, can show every course, filters and searches, links
     each course to its details, and never shows a class number
+  - a student's enrolment changes reach their own open pages and nobody
+    else's; signed out, `/` is a public page and the rest needs sign-in
   - the catalogue importer parses course pages into the stored shape, and
     imported courses are searchable like the rest
   - the server refuses the ineligible variant and saves nothing

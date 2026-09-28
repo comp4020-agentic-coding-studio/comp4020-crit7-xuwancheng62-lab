@@ -1,5 +1,6 @@
 ---
 import HeadDecor from "../../components/HeadDecor.astro";
+import LiveEnrolments from "../../components/LiveEnrolments.astro";
 import Base from "../../layouts/Base.astro";
 import { browseCatalogue, type CatalogueFilters, featuredSession, getSession, listSessions } from "../../lib/db";
 import { findProgram } from "../../lib/programs";
@@ -43,6 +44,7 @@ const detail = (code: string) => `/sessions/${session!.code}/courses/${code}/`;
 ---
 
 <Base title={filters.q ? `Courses: ${filters.q}` : "Course catalogue"}>
+  {session && <LiveEnrolments session={session.code} />}
   <header class="page-head">
     <HeadDecor variant="network" />
     {session && <p class="eyebrow">{session.name}</p>}

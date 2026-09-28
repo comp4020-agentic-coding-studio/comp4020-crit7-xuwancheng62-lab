@@ -1527,3 +1527,40 @@ th.weight {
     opacity: 0.6;
   }
 }
+
+/* ---------- public landing (signed out) ---------- */
+.landing-actions {
+  margin-top: var(--space-5);
+}
+.landing-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+.landing-steps li {
+  padding: var(--space-5);
+  background: var(--paper);
+  border: var(--rule);
+  border-top: 4px solid var(--gold);
+  counter-increment: step;
+}
+.landing-steps li::before {
+  content: counter(step, decimal-leading-zero);
+  display: block;
+  margin-bottom: var(--space-2);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--gold-deep);
+}
+.landing-steps h3 {
+  margin-bottom: var(--space-2);
+}
+.landing-steps p {
+  margin: 0;
+  color: var(--muted);
+}

@@ -1,0 +1,38 @@
+---
+import Base from "../layouts/Base.astro";
+import HeadDecor from "./HeadDecor.astro";
+---
+
+<Base title="Enrol by course, not by class number">
+  <header class="page-head">
+    <HeadDecor variant="arcs" />
+    <p class="eyebrow">ANU Student Services · Prototype</p>
+    <h1>Enrol by course, not by class number</h1>
+    <p class="lede">
+      A redesign of ANU course enrolment. Find a course by its name, code or topic, read what it involves, and add it,
+      without leaving to look up a Class Number.
+    </p>
+    <div class="actions landing-actions">
+      <a class="button primary large" href="/sign-in/">Sign in with your Student ID</a>
+      <a class="button quiet large" href="/readme/">About this prototype</a>
+    </div>
+  </header>
+
+  <section class="section" aria-labelledby="landing-how">
+    <h2 id="landing-how">How it works</h2>
+    <ol class="landing-steps">
+      <li>
+        <h3>Search or browse</h3>
+        <p>Look up a course you know, or browse the catalogue for the semester when you don't.</p>
+      </li>
+      <li>
+        <h3>The right version, automatically</h3>
+        <p>Your study level picks the undergraduate or postgraduate code for you, so COMP4020 or COMP8020 is never a guess.</p>
+      </li>
+      <li>
+        <h3>Details before you enrol</h3>
+        <p>Prerequisites, schedule and assessment are on the course page, one step before Add.</p>
+      </li>
+    </ol>
+  </section>
+</Base>

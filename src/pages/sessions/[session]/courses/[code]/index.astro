@@ -1,5 +1,6 @@
 ---
 import Crumbs from "../../../../../components/Crumbs.astro";
+import LiveEnrolments from "../../../../../components/LiveEnrolments.astro";
 import Base from "../../../../../layouts/Base.astro";
 import { getCourseView, getSession, listEnrolments, MAX_COURSES_PER_SESSION } from "../../../../../lib/db";
 import { isRecommended } from "../../../../../lib/programs";
@@ -17,6 +18,7 @@ const atLimit = !course.enrolled && listEnrolments(session.code, student.id).len
 ---
 
 <Base title={`${course.code} ${course.name}`}>
+  <LiveEnrolments session={session.code} />
   <Crumbs items={[{ label: "Enrolment", href: "/" }, { label: session.name, href: `${base}/` }, { label: course.code }]} />
 
   <header class="course-head">

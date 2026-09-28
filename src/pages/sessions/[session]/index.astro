@@ -2,6 +2,7 @@
 import Crumbs from "../../../components/Crumbs.astro";
 import ScheduleList from "../../../components/ScheduleList.astro";
 import HeadDecor from "../../../components/HeadDecor.astro";
+import LiveEnrolments from "../../../components/LiveEnrolments.astro";
 import Base from "../../../layouts/Base.astro";
 import { getCourse, getSession, listEnrolments, listRecommended, MAX_COURSES_PER_SESSION, statusOf } from "../../../lib/db";
 import { formatDate, totalUnits } from "../../../lib/format";
@@ -25,6 +26,7 @@ const recommended = atLimit ? [] : listRecommended(session.code, student);
 ---
 
 <Base title={session.name}>
+  <LiveEnrolments session={session.code} />
   <Crumbs items={[{ label: "Enrolment", href: "/" }, { label: session.name }]} />
 
   <header class="page-head">

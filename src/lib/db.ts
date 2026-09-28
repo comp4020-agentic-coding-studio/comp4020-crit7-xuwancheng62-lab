@@ -4,6 +4,7 @@ import Database from "better-sqlite3";
 import { and, asc, eq, getTableColumns } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { announceEnrolmentChange } from "./events";
 import { isRecommended } from "./programs";
 import { type Career, type Course, classes, courseGroups, courses, enrolments, type Session, sessions, students } from "./schema";
 import { seedCatalogue } from "./seed";
@@ -344,6 +345,7 @@ export function enrol(
   student: Student,
 ): "ok" | "not-offered" | "ineligible" | "limit" {
   const result = addEnrolment(db, sessionCode, courseCode, student);
+  if (result === "ok") announceEnrolmentChange({ studentId: student.id, session: sessionCode });
   return result === "already-enrolled" ? "ok" : result;
 }
 
@@ -363,7 +365,9 @@ export function dropCourse(sessionCode: string, courseCode: string, student: Stu
     .delete(enrolments)
     .where(and(eq(enrolments.studentId, student.id), eq(enrolments.classNumber, found.classNumber)))
     .run();
-  return changes > 0 ? "ok" : "not-enrolled";
+  if (changes === 0) return "not-enrolled";
+  announceEnrolmentChange({ studentId: student.id, session: sessionCode });
+  return "ok";
 }
 
 export type SwitchResult = "ok" | "same" | "closed" | "not-enrolled" | Exclude<AddResult, "ok">;
@@ -393,6 +397,7 @@ export function switchCourse(sessionCode: string, from: string, to: string, stud
       const added = addEnrolment(tx, sessionCode, to, student);
       if (added !== "ok") throw new SwitchRejected(added);
     });
+    announceEnrolmentChange({ studentId: student.id, session: sessionCode });
     return "ok";
   } catch (error) {
     if (error instanceof SwitchRejected) return error.reason;
